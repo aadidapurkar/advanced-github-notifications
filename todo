@@ -1,9 +1,8 @@
-todo
-finish writing crud queries for db, clean up typing
-create server with corresponding endpoints for db crud
+clean up typing, error handling for db errors and request validation with zod
 write getCommits, checkForNewCommit, getDetailedDataForCommit functions in githubAPI
-write unit tests?
-first test for notif - console log on server
+first test for notif capability - can output on console log on server for simplicity
 
 
 plan
+implement github api functions
+implement polling on server for each subscription - note consider update lastcommithash and etag of subscription. if lastcommithash doesnt match latest commit then console log
