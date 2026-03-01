@@ -1,0 +1,9 @@
+todo
+finish writing crud queries for db, clean up typing
+create server with corresponding endpoints for db crud
+write getCommits, checkForNewCommit, getDetailedDataForCommit functions in githubAPI
+write unit tests?
+first test for notif - console log on server
+
+
+plan
