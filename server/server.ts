@@ -24,6 +24,8 @@ app.listen(8080, () => console.log("Server running"))
 
 
 // poller - for each subscription - checks latest commit and compares sha in db, if mismatch, console logs the commit msg
+// note - first notif will be sent during first poll because sha in db will change from null -> actual, this is probably good to leave in while testing 
+// for production, a simple dirty fix could be to just not send the first notification via a db boolean flag like receivedFirstNotif, or when doing the sql query for creating the user, call the get latest commit sha fn
 const pollAllSubscriptions = async () => {
     const subscriptions = await getSubscriptions()
     const latestCommitPromises = subscriptions.map(s => getLatestCommitShaMsg(s.username, s.repo))
