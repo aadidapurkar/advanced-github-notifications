@@ -6,6 +6,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
+interface Subscription extends RowDataPacket {
+  id: number;
+  subscriber: number;
+  username: string;
+  repo: string;
+  etag: string | null;
+  latestCommitSha: string | null;
+}
 
 // Pool of connections that can be reused as app starts to scale
 // Such that you don't need to establish a new connection every time you make a query
@@ -93,7 +101,7 @@ export const createUser = async(username : string, email : string | null = null,
 
 // CRUD FOR SUBSCRIPTIONS ---------------------------------------------------------------------------------------------------------------------------------------------
 export const getSubscriptions = async () => {
-    const [rows, metadata] = await pool.query("SELECT * FROM subscriptions;")
+    const [rows, metadata] = await pool.query<Subscription[]>("SELECT * FROM subscriptions;")
     return rows
 }
 
