@@ -18,5 +18,17 @@ CREATE TABLE subscriptions (
     repo TEXT NOT NULL,
     etag TEXT,
     latestCommitSha TEXT,
+    latestEventTime DATETIME DEFAULT '1900-01-01 00:00:00',
     FOREIGN KEY (subscriber) REFERENCES users(id)
+);
+
+
+CREATE TABLE events_subscriptions (
+    id integer PRIMARY KEY AUTO_INCREMENT,
+    subscriptionRef integer NOT NULL,
+    eventType VARCHAR(39) NOT NULL,
+    commitContains TEXT,
+    issueCommentContains TEXT,
+    gitDiff TEXT,
+    FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id)
 );

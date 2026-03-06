@@ -8,5 +8,19 @@ INSERT INTO SUBSCRIPTIONS (subscriber, repo, username) VALUES
     (1, "lockin","aadidapurkar"),
     (1,"test-notif","aadidapurkar");
 
+INSERT INTO EVENTS_SUBSCRIPTIONS (subscriptionRef, eventType) VALUES 
+    (1,"PushEvent"),
+    (1,"CreateEvent");
+
+INSERT INTO EVENTS_SUBSCRIPTIONS (subscriptionRef, eventType) VALUES 
+    (4,"PushEvent"),
+    (4,"CreateEvent");
+
+
+
 SELECT id, username FROM USERS;
 SELECT id, subscriber, repo, username FROM SUBSCRIPTIONS;
+
+
+INSERT INTO SUBSCRIPTIONS (subscriber, repo, username) VALUES 
+    (1,"test-notif","aadidapurkar");

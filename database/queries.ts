@@ -13,6 +13,9 @@ interface Subscription extends RowDataPacket {
   repo: string;
   etag: string | null;
   latestCommitSha: string | null;
+  latestEventTime: Date | null;
+
+
 }
 
 // Pool of connections that can be reused as app starts to scale
@@ -132,8 +135,8 @@ export const createSubscription = async (repo : string, username: string, subscr
      return { insertId: res.insertId };;
 }
 
-export const updateSubscriptionDetails = async (id: string, subscriber : string | null = null, username : string | null = null, repo : string | null = null, etag : string | null = null, latestCommitSha : string | null = null) => {
-    const fieldsLiterals = [subscriber, username, repo, etag, latestCommitSha].filter(f => f !== null);
+export const updateSubscriptionDetails = async (id: number, subscriber : string | null = null, username : string | null = null, repo : string | null = null, etag : string | null = null, latestCommitSha : string | null = null, latestEventTime : Date | null = null) => {
+    const fieldsLiterals = [subscriber, username, repo, etag, latestCommitSha, latestEventTime].filter(f => f !== null);
     if (fieldsLiterals.length === 0) {
         return;
     }
@@ -142,7 +145,8 @@ export const updateSubscriptionDetails = async (id: string, subscriber : string 
         ["username", username],
         ["repo", repo],
         ["etag", etag],
-        ["latestCommitSha", latestCommitSha]
+        ["latestCommitSha", latestCommitSha],
+        ["latestEventTime", latestEventTime]
     ]
     .filter(f => f[1] !== null)
     .map(f => `${f[0]} = ?`)
@@ -156,6 +160,11 @@ export const updateSubscriptionDetails = async (id: string, subscriber : string 
     `, [...fieldsLiterals, id]);
     
     return res.affectedRows > 0;
+}
+
+export const getEventsOfSubscription = async (id:number) => {
+    const [rows, metadata] = await pool.query<Subscription[]>("SELECT * FROM events_subscriptions WHERE subscriptionRef = ?;", [id])
+    return rows
 }
 
 // testing
