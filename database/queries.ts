@@ -2,21 +2,12 @@ import mysql, { Pool, ResultSetHeader, RowDataPacket } from 'mysql2';
 import dotenv from 'dotenv'
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { EventSubscription, Subscription } from '../types';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
-interface Subscription extends RowDataPacket {
-  id: number;
-  subscriber: number;
-  username: string;
-  repo: string;
-  etag: string | null;
-  latestCommitSha: string | null;
-  latestEventTime: Date | null;
 
-
-}
 
 // Pool of connections that can be reused as app starts to scale
 // Such that you don't need to establish a new connection every time you make a query
@@ -126,6 +117,8 @@ export const deleteSubscription = async (id: string) => {
     return res.affectedRows > 0;
 }
 
+
+// todo handle the other columns
 export const createSubscription = async (repo : string, username: string, subscriber : string) => {
     const [res] = await pool.query<ResultSetHeader>(`
         INSERT INTO subscriptions (subscriber, username, repo)
@@ -163,8 +156,53 @@ export const updateSubscriptionDetails = async (id: number, subscriber : string 
 }
 
 export const getEventsOfSubscription = async (id:number) => {
-    const [rows, metadata] = await pool.query<Subscription[]>("SELECT * FROM events_subscriptions WHERE subscriptionRef = ?;", [id])
+    const [rows, metadata] = await pool.query<EventSubscription[]>("SELECT * FROM events_subscriptions WHERE subscriptionRef = ?;", [id])
     return rows
 }
 
-// testing
+export const updateEventOfSubscription = async (id: number, eventType : string | null = null, commitMsgSubstring : string | null = null, issueCommentContains : string | null = null, gitDiffPatchPrompt : string | null = null, fileChanged : string | null = null, particularBranch : string | null = null, gitDiffSize : number | null) => {
+    const fieldsLiterals = [eventType, commitMsgSubstring, issueCommentContains, gitDiffPatchPrompt, fileChanged, particularBranch, gitDiffSize].filter(f => f !== null);
+    if (fieldsLiterals.length === 0) {
+        return;
+    }
+    const fieldsSQL = [
+        ["eventType", eventType],
+        ["commitMsgSubstring", commitMsgSubstring],
+        ["issueCommentContains", issueCommentContains],
+        ["gitDiffPatchPrompt", gitDiffPatchPrompt],
+        ["fileChanged", fileChanged],
+        ["particularBranch", particularBranch],
+        ["gitDiffSize", gitDiffSize]
+    ]
+    .filter(f => f[1] !== null)
+    .map(f => `${f[0]} = ?`)
+    .join(', ');
+
+    const [res] = await pool.query<ResultSetHeader>(
+    `
+    UPDATE subscriptions
+    SET ${fieldsSQL}
+    WHERE id = ?
+    `, [...fieldsLiterals, id]);
+    
+    return res.affectedRows > 0;
+}
+
+
+export const createEventOfSubscription = async (subscriptionRef : number, eventType: string, commitMsgSubstring : string | null = null, issueCommentContains : string | null = null, gitDiffPatchPrompt : string | null = null, fileChanged : string | null = null, gitDiffSize : string | null = null, particularBranch : string | null = null) => {
+    const [res] = await pool.query<ResultSetHeader>(`
+        INSERT INTO subscriptions (subscriptionRef, eventType, commitMsgSubstring, issueCommentContains, gitDiffPatchPrompt, fileChanged, gitDiffSize, particularBranch)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [subscriptionRef, eventType, commitMsgSubstring, issueCommentContains, gitDiffPatchPrompt, fileChanged, gitDiffSize, particularBranch]);
+        
+     return { insertId: res.insertId };;
+}
+
+export const deleteEventOfSubscription = async (id : number) => {
+    const [res] = await pool.query<ResultSetHeader>(
+        `
+        DELETE FROM events_subscriptions WHERE id = ?
+        `, [id]
+    )
+    return res.affectedRows > 0;
+}

@@ -27,8 +27,11 @@ CREATE TABLE events_subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
     subscriptionRef integer NOT NULL,
     eventType VARCHAR(39) NOT NULL,
-    commitContains TEXT,
+    commitMsgSubstring TEXT,
     issueCommentContains TEXT,
-    gitDiff TEXT,
+    gitDiffPatchPrompt TEXT,
+    gitDiffSize INTEGER,
+    particularBranch TEXT,
+    fileChanged TEXT,
     FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id)
 );
