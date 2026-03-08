@@ -22,10 +22,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import { EventSubscription, GithubEvent, Notification, Subscription } from "../types";
+import { eventsSubscriptionRouter } from "./routes/events-subscriptions";
 const app = express();
 app.use(json());
 app.use("/users", usersRouter);
 app.use("/subscriptions", subscriptionsRouter);
+app.use("/events-subscriptions", eventsSubscriptionRouter);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.log(err.stack);
@@ -48,7 +50,7 @@ const pollAllSubscriptions = async () => {
         s.username,
         s.repo,
         s.latestEventTime!,
-      ); // note that  these filter the responsse of events to only incldue those events which have not been parsed yet
+      ); // note that these filter the response of events to only include those events which have not been parsed yet
 
       // find out which type of events this subscription wants to be notified for, as well as further desired filters
       const eventSubscriptions = (await getEventsOfSubscription(s.id))
@@ -60,20 +62,13 @@ const pollAllSubscriptions = async () => {
       //
       eventsOfSubscription.forEach(async (e, i) => {
         // checks if the event that occured matches the desired event (note that the current context is a particular github event corresponding to a subscription )
-
-        if (desiredEvents.includes(e.type!)) {
-          // currently just checking for eventtype match
-          console.log(
-            `For subscriber ${s.username}, subscription ${s.id} for repo ${s.repo} owned by ${s.username}, found an ${e.type!} event that requires notifying.`,
-          );
-          parseEvent(eventSubscriptions[i], s, e);
-        }
+          
       });
     }),
   );
 };
 
-setInterval(pollAllSubscriptions, 20000);
+// setInterval(pollAllSubscriptions, 20000);
 
 
 // a function which takes an event, and returns an array of notifications

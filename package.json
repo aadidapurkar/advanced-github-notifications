@@ -15,11 +15,13 @@
     "@security-alliance/octokit-plugin-cache": "^0.0.4",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "json-rules-engine": "^7.3.1",
     "make-fetch-happen": "^15.0.4",
     "mysql2": "^3.18.2",
     "nodemon": "^3.1.14",
     "octokit": "^5.0.5",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

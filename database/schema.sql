@@ -16,7 +16,6 @@ CREATE TABLE subscriptions (
     subscriber integer NOT NULL,
     username TEXT NOT NULL,
     repo TEXT NOT NULL,
-    etag TEXT,
     latestCommitSha TEXT,
     latestEventTime DATETIME DEFAULT '1900-01-01 00:00:00',
     FOREIGN KEY (subscriber) REFERENCES users(id)
@@ -31,7 +30,18 @@ CREATE TABLE events_subscriptions (
     issueCommentContains TEXT,
     gitDiffPatchPrompt TEXT,
     gitDiffSize INTEGER,
-    particularBranch TEXT,
+    particularBranch TEXT, 
     fileChanged TEXT,
+    booleanQuery JSON,
     FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id)
 );
+
+
+CREATE TABLE notifs_events_subscriptions (
+    id integer PRIMARY KEY AUTO_INCREMENT,
+    subscriberId integer NOT NULL,
+    eventId integer NOT NULL,
+    notif TEXT
+    FOREIGN KEY (subscriberId) REFERENCES subscriptions(id),
+    FOREIGN KEY (eventId) REFERENCES events_subscriptions(id)
+)

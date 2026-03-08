@@ -1,5 +1,12 @@
 import { RowDataPacket } from "mysql2";
 
+export type JsonRulesEngineRule = {
+  conditions: {
+    
+  }
+}
+
+
 export interface GithubEvent {
   id: string;
   type: string;

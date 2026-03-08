@@ -1,19 +1,26 @@
 import express, { Request, Response, NextFunction, json } from 'express';
-import { getUsers, createUser, getUser, deleteUser, updateUserDetails } from '../../database/queries';
+import { createUser, getUser, deleteUser, updateUserDetails } from '../../database/queries';
+import {getParticularUserReqSchema} from "../zod-schemas"
+import { getUsers, getUserById } from '../../database/safeQueries';
 export const usersRouter = express.Router();
 
 interface getUserParams {
     id: string;
 }
 usersRouter.get("/", async (req : Request, res : Response) => {
-    const notes = await getUsers()
-    res.status(200).json(notes)
+    const [err, users] = await getUsers()
+    return err ? res.status(400).json(err) :  res.status(200).json(users)
 })
 
 
-usersRouter.get("/:id", async (req : Request<getUserParams>, res : Response) => {
-    const user = await getUser(req.params.id)
-    res.status(200).json(user)
+usersRouter.get("/:id", async (req : Request, res : Response) => {
+    const reqParse = getParticularUserReqSchema.safeParse(req.params)
+    if (reqParse.success === false) {
+        return res.status(400).json(reqParse.error)
+    }
+    const [err, user ] = await getUserById(reqParse.data.id)
+    return err ? res.status(400).json(err) :  res.status(200).json(user)
+   
 })
 
 usersRouter.post("/add", async (req : Request, res : Response) => {
