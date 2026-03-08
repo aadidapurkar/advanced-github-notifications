@@ -1,13 +1,7 @@
 important 
-boolean algebra parser for filters (Regexp?)
-test new queries
-add boolean algebra field to events_subscriptions table
+SUBSCRIPTIONS REFACTOR typing/zod endpoints + queries
+EVENTS_SUBSCRIPTIONS REFACTOR typing/zod endpoints + queries
+NOTI REFACTOR typing/zodendpoints + queries
+NOTI insert some example rows
 
-
-
-
-long term
-clean up typing, error handling for db errors /github api possible response and request validation with zod
-
-
-
+POLL PUSH EVENTS + HANDLE BOOLEAN ALGEBRA FOR PUSHEVENT NOTIFS WITH json-rules-engine

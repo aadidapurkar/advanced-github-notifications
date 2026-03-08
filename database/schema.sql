@@ -41,7 +41,7 @@ CREATE TABLE notifs_events_subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
     subscriberId integer NOT NULL,
     eventId integer NOT NULL,
-    notif TEXT
+    notif TEXT,
     FOREIGN KEY (subscriberId) REFERENCES subscriptions(id),
     FOREIGN KEY (eventId) REFERENCES events_subscriptions(id)
-)
+);
