@@ -100,6 +100,8 @@ export const getNotificationByEventIdReqSchema = z.object({
 }).strict();
 
 export type User = z.infer<typeof updateUserReqSchema>
+export type UserC = z.infer<typeof addUserReqSchema>
+
 export type Subscription = z.infer<typeof updateSubscriptionReqSchema>
 export type EventSubscription = z.infer<typeof updateEventForASubscriptionReqSchema>
 export type Notification = {

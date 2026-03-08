@@ -16,7 +16,14 @@ export const handle = async <T>(promise: Promise<T>): Promise<Result<T>> => {
 };
 
 
-export const getSetSyntaxSQL = (columns : string[]) : string => {
+export const setSyntaxSQL = (columns : string[]) : string => {
     return columns.map(f => `${f} = ?`)
     .join(', ');
 } 
+
+export const addSyntaxSql = (columns: string[]) : string => {
+  return columns.join(", ")
+}
+export const getValueSyntax = <T>(values : T[]) : string => {
+  return values.map(_ => "?").join(', ');
+}
