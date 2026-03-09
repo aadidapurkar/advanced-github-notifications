@@ -56,7 +56,7 @@ export const updateUserReqSchema = z.object({
 /// Events-Subscriptions CRUD Req Body for Server 
 
 export const getAllEventsOfSubscriberReqSchema = z.object({
-    id: z.number() // subscription id not event id
+    id: z.coerce.number().int().positive() // subscription id not event id
 }).strict();
 
 
@@ -82,8 +82,8 @@ export const deleteEventForASubscriptionReqSchema = z.object({
 
 export const updateEventForASubscriptionReqSchema = z.object({
     id: z.number(), // event id
-    subscriptionRef: z.number(), // subscription id not event id
-    eventType: z.string(),
+    subscriptionRef: z.number().optional(), // subscription id not event id
+    eventType: z.string().optional(),
     commitMsgSubstring: z.string().nullable().optional(),
     issueCommentContains: z.string().nullable().optional(),
     gitDiffPatchPrompt: z.string().nullable().optional(),
@@ -106,6 +106,8 @@ export type Subscription = z.infer<typeof updateSubscriptionReqSchema>
 export type SubscriptionC = z.infer<typeof addSubscriptionReqSchema>
 
 export type EventSubscription = z.infer<typeof updateEventForASubscriptionReqSchema>
+export type EventSubscriptionC = z.infer<typeof addEventForASubscriptionReqSchema>
+
 export type Notification = {
     id: number,
     subscriberId: number,

@@ -15,8 +15,8 @@ subscriptionsRouter.get("/:id", async (req : Request, res : Response) => {
     if (reqParse.success === false) {
         return res.status(400).json(reqParse.error)
     }
-    const [err, sub] = await getSubscriptionsBySubscriberId(reqParse.data.id)
-    return err ? res.status(500).json({error: err.message}) : res.status(200).json(sub)
+    const [err, subs] = await getSubscriptionsBySubscriberId(reqParse.data.id)
+    return err ? res.status(500).json({error: err.message}) : res.status(200).json(subs)
 })
 
 subscriptionsRouter.post("/add", async (req : Request, res : Response) => {

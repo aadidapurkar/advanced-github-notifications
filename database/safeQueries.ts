@@ -2,7 +2,7 @@ import mysql, { Pool, ResultSetHeader, RowDataPacket } from 'mysql2';
 import dotenv from 'dotenv'
 import path from 'path';
 import { fileURLToPath } from 'url';
-import {Subscription, SubscriptionC, User, UserC} from "../server/zod-schemas"
+import {EventSubscription, EventSubscriptionC, Subscription, SubscriptionC, User, UserC} from "../server/zod-schemas"
 import {handle, Result, getValueSyntax, setSyntaxSQL, addSyntaxSql} from "../util"
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,7 +112,7 @@ export const getSubscriptions = async () : Promise<Result<Subscription[]>> => {
 }
 
 
-export const getSubscriptionsBySubscriberId = async (id: number) : Promise<Result<Subscription>> => {
+export const getSubscriptionBySubscriptionId = async (id: number) : Promise<Result<Subscription>> => {
     const subPromise = pool.query<RowDataPacket[]>(`
         SELECT * FROM subscriptions where id = ?;`, [id])
     const [err, sub] = await handle(subPromise)
@@ -122,6 +122,17 @@ export const getSubscriptionsBySubscriberId = async (id: number) : Promise<Resul
     const [rows, fields] = sub
     return [null, rows[0] as Subscription]
 }
+
+export const getSubscriptionsBySubscriberId = async (id: number) : Promise<Result<Subscription[]>> => {
+    const subPromise = pool.query<RowDataPacket[]>(`
+        SELECT * FROM subscriptions where subscriber = ?;`, [id])
+    const [err, sub] = await handle(subPromise)
+    if (err || sub[0].length < 1) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = sub
+    return [null, rows as Subscription[]]
+} 
 
 export const createSubscription = async (s: SubscriptionC) : Promise<Result<{success: boolean, insertId: number}>> => {
     const keys = Object.keys(s)
@@ -172,12 +183,95 @@ export const deleteSubscription = async (id: number) : Promise<Result<boolean>> 
 
 // tests
 //console.log(await getSubscriptions())
-//console.log(await getSubscriptionsBySubscriberId(1))
+//console.log(await getSubscriptionsBySubscriptionId(1))
 //console.log(await createSubscription({username: "aadidapurkar", repo: "lockin", subscriber: 1}))
 //console.log(await updateSubscription({id: })
 
 // CRUD FOR EVENTS OF SUBSCRIPTIONS ------------------------------------------------------------------------------------------------------------
+export const getAllEventsForAllSubscriptions = async () : Promise<Result<EventSubscription[]>> => {
+    const subsPromise = pool.query<RowDataPacket[]>(`SELECT * FROM events_subscriptions;`)
+    const [err, subs] = await handle(subsPromise)
+    if (err || !subs) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = subs
+    return [null, rows as EventSubscription[]]
+}
 
+export const getEventById = async (id: number) : Promise<Result<EventSubscription>> => {
+    const subPromise = pool.query<RowDataPacket[]>(`
+        SELECT * FROM events_subscriptions where id = ?;`, [id])
+    const [err, sub] = await handle(subPromise)
+    if (err || sub[0].length < 1) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = sub
+    return [null, rows[0] as EventSubscription]
+}
+
+export const getEventsForSubscriptionId = async (id: number) : Promise<Result<EventSubscription[]>> => {
+    const subPromise = pool.query<RowDataPacket[]>(`
+        SELECT * FROM events_subscriptions where subscriptionRef = ?;`, [id])
+    const [err, sub] = await handle(subPromise)
+    if (err) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = sub
+    return [null, rows as EventSubscription[]]
+}   
+
+export const deleteEventById = async (id: number) : Promise<Result<boolean>>=> {
+    const delPromise = pool.query<ResultSetHeader>(`DELETE FROM events_subscriptions where id = ?`, [id])
+    const [err, resp] = await handle(delPromise)
+    if (err || resp[0].affectedRows < 1) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [r, f] = resp
+    return r.affectedRows === 1 ? [null, true]: [null, false]
+}
+
+export const updateEvent = async (e : EventSubscription) : Promise<Result<boolean>> => {
+    const { id, ...fieldsToUpdate } = e;
+    const keys = Object.keys(fieldsToUpdate);
+    const values = Object.values(fieldsToUpdate);
+    if (keys.length === 0) {
+        return [null, true]; 
+    }
+    const updatePromise = pool.query<ResultSetHeader>(
+    `
+    UPDATE events_subscriptions SET ${setSyntaxSQL(keys)} WHERE id = ?
+    `,
+    [...values, id]
+    )
+    const [err, resp] = await handle(updatePromise)
+    if (err || !resp) {
+        return [err, null]
+    }
+    return resp[0].affectedRows === 1 ? [null, true] : [null, false]
+}
+
+export const createEventForSubscription = async (e: EventSubscriptionC) : Promise<Result<{success: boolean, insertId: number}>> => {
+    const keys = Object.keys(e)
+    const values = Object.values(e)
+    const createPromise = pool.query<ResultSetHeader>(
+        `
+        INSERT INTO events_subscriptions (${addSyntaxSql(keys)})
+        VALUES (${getValueSyntax(values)});
+        `,
+        values
+    )
+    const [err, resp] = await handle(createPromise)
+    if (err || !resp) {
+        return [err, null]
+    }
+    return resp[0].affectedRows === 1 ? [null,{success: true, insertId: resp[0].insertId}] : [null,{success : false, insertId: - 1}]
+}
+
+// console.log(await getAllEventsForAllSubscriptions())
+// console.log(await getEventsForSubscriptionId(4))
+// console.log(await getEventById(1))
+// console.log(await createEventForSubscription({subscriptionRef: 4, eventType: "GollumEvent"}))
+// console.log(await updateEventById({id: 3, eventType: "GollumEvent"}))
 
 
 // CRUD FOR NOTIFICATIONS OF EVENTS ------------------------------------------------------------------------------------------------------------
