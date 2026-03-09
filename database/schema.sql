@@ -24,7 +24,7 @@ CREATE TABLE subscriptions (
 
 CREATE TABLE events_subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
-    subscriptionRef integer NOT NULL,
+    subscriptionRef integer,
     eventType VARCHAR(39) NOT NULL,
     commitMsgSubstring TEXT,
     issueCommentContains TEXT,
@@ -33,15 +33,15 @@ CREATE TABLE events_subscriptions (
     particularBranch TEXT, 
     fileChanged TEXT,
     booleanQuery JSON,
-    FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id)
+    FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id) ON DELETE SET NULL
 );
 
 
 CREATE TABLE notifs_events_subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
-    subscriberId integer NOT NULL,
-    eventId integer NOT NULL,
+    subscriberId integer,
+    eventId integer,
     notif TEXT,
-    FOREIGN KEY (subscriberId) REFERENCES subscriptions(id),
-    FOREIGN KEY (eventId) REFERENCES events_subscriptions(id)
+    FOREIGN KEY (subscriberId) REFERENCES subscriptions(id) ON DELETE SET NULL;
+    FOREIGN KEY (eventId) REFERENCES events_subscriptions(id) ON DELETE SET NULL;
 );

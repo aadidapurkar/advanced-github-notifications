@@ -1,42 +1,47 @@
 import express, { Request, Response, NextFunction, json } from 'express';
-import { getSubscriptions, getSubscriptionsOfUser, deleteSubscription, updateSubscriptionDetails, createSubscription } from '../../database/queries';
+import {addSubscriptionReqSchema, deleteSubscriptionReqSchema, getParticularSubscriptionReqSchema, updateEventForASubscriptionReqSchema, updateSubscriptionReqSchema } from "../zod-schemas"
+
+import {createSubscription, deleteSubscription, getSubscriptions, getSubscriptionsBySubscriberId, updateSubscription} from "../../database/safeQueries"
 export const subscriptionsRouter = express.Router();
 
-interface getUserParams {
-    id: string;
-}
 subscriptionsRouter.get("/", async (req : Request, res : Response) => {
-    const notes = await getSubscriptions()
-    res.status(200).json(notes)
+    const [err, subs] = await getSubscriptions()
+    return err ? res.status(500).json({error: err.message}) : res.status(200).json(subs)
 })
 
 
-subscriptionsRouter.get("/:id", async (req : Request<getUserParams>, res : Response) => {
-    const user = await getSubscriptionsOfUser(req.params.id)
-    res.status(200).json(user)
+subscriptionsRouter.get("/:id", async (req : Request, res : Response) => {
+    const reqParse = getParticularSubscriptionReqSchema.safeParse(req.params)
+    if (reqParse.success === false) {
+        return res.status(400).json(reqParse.error)
+    }
+    const [err, sub] = await getSubscriptionsBySubscriberId(reqParse.data.id)
+    return err ? res.status(500).json({error: err.message}) : res.status(200).json(sub)
 })
 
 subscriptionsRouter.post("/add", async (req : Request, res : Response) => {
-    if (!req.body || !req.body.hasOwnProperty("username") || !req.body.hasOwnProperty("repo") || !req.body.hasOwnProperty("subscriber")) {return res.status(500).json({error: "Missing param/s in request body"})}
-    const result = await createSubscription(req.body.repo, req.body.username, req.body.subscriber)
-    res.json(result)
+    const reqParse = addSubscriptionReqSchema.safeParse(req.body)
+    if (reqParse.success === false) {
+        return res.status(400).json(reqParse.error)
+    }
+    const [err, resp] = await createSubscription(reqParse.data)
+    return err ? res.status(500).json({error: err.message}) : res.status(200).json(resp)
 })
 
 subscriptionsRouter.delete("/delete", async (req : Request, res : Response) => {
-    if (!req.body || !req.body.hasOwnProperty("id") ) {return res.status(500).json({error: "Missing param/s in request body"})}
-    const result = await deleteSubscription(req.body.id)
-    res.json({"deleted" :result})
+    const reqParse = deleteSubscriptionReqSchema.safeParse(req.body)
+    if (reqParse.success === false) {
+        return res.status(400).json(reqParse.error)
+    }
+    const [err, succ] = await deleteSubscription(reqParse.data.id)
+    return err ? res.status(500).json({error: err.message})  : res.status(200).json(succ)
 })
 
 subscriptionsRouter.put("/update", async (req: Request, res: Response) => {
-    if (!req.body || !req.body.hasOwnProperty("id") ) {return res.status(500).json({error: "Missing param/s in request body"})}
-    const result = await updateSubscriptionDetails(
-        req.body.id, 
-        req.body.hasOwnProperty("subscriber") ? req.body.subscriber : null,
-        req.body.hasOwnProperty("username") ? req.body.username : null,
-        req.body.hasOwnProperty("repo") ? req.body.repo : null,
-        req.body.hasOwnProperty("etag") ? req.body.etag : null,
-        req.body.hasOwnProperty("latestCommitSha") ? req.body.latestCommitSha : null,
-    )
-    res.json({"updated":result})
+    const reqParse = updateSubscriptionReqSchema.safeParse(req.body)
+    if(reqParse.success === false) {
+        return res.status(400).json(reqParse.error)
+    }
+    const [err, user] = await updateSubscription(reqParse.data)
+    return err ? res.status(500).json({ error: err.message }) :  res.status(200).json(user)
 })
