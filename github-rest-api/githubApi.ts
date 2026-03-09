@@ -5,8 +5,8 @@ import { Octokit } from "octokit";
 import makeFetchHappen from "make-fetch-happen";
 import path from "path";
 import { fileURLToPath } from "url";
-import { updateSubscriptionDetails } from "../database/queries";
 import { GithubEvent, PushEvent } from "../types";
+import { updateSubscription } from "../database/safeQueries";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
@@ -52,15 +52,7 @@ export const getLatestRepoEvents = async (
 
   // update row of table subscription column last parsed event time
   if (latestFoundTime > latestRecordedEventTime) {
-    updateSubscriptionDetails(
-      parseInt(subId, 10),
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      latestFoundTime,
-    );
+    updateSubscription({id: parseInt(subId,10), latestEventTime: latestFoundTime})
   }
 
   return unparsedEvents;

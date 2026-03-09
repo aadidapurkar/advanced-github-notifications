@@ -2,7 +2,7 @@ import mysql, { Pool, ResultSetHeader, RowDataPacket } from 'mysql2';
 import dotenv from 'dotenv'
 import path from 'path';
 import { fileURLToPath } from 'url';
-import {EventSubscription, EventSubscriptionC, Subscription, SubscriptionC, User, UserC} from "../server/zod-schemas"
+import {EventSubscription, EventSubscriptionC, NotificationOfEvent, NotificationOfEventC, Subscription, SubscriptionC, User, UserC} from "../server/zod-schemas"
 import {handle, Result, getValueSyntax, setSyntaxSQL, addSyntaxSql} from "../util"
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -189,8 +189,8 @@ export const deleteSubscription = async (id: number) : Promise<Result<boolean>> 
 
 // CRUD FOR EVENTS OF SUBSCRIPTIONS ------------------------------------------------------------------------------------------------------------
 export const getAllEventsForAllSubscriptions = async () : Promise<Result<EventSubscription[]>> => {
-    const subsPromise = pool.query<RowDataPacket[]>(`SELECT * FROM events_subscriptions;`)
-    const [err, subs] = await handle(subsPromise)
+    const eventsPromise = pool.query<RowDataPacket[]>(`SELECT * FROM events_subscriptions;`)
+    const [err, subs] = await handle(eventsPromise)
     if (err || !subs) {
         return [err ? err : new Error("DB Error"), null]
     }
@@ -267,6 +267,7 @@ export const createEventForSubscription = async (e: EventSubscriptionC) : Promis
     return resp[0].affectedRows === 1 ? [null,{success: true, insertId: resp[0].insertId}] : [null,{success : false, insertId: - 1}]
 }
 
+// tests
 // console.log(await getAllEventsForAllSubscriptions())
 // console.log(await getEventsForSubscriptionId(4))
 // console.log(await getEventById(1))
@@ -275,3 +276,68 @@ export const createEventForSubscription = async (e: EventSubscriptionC) : Promis
 
 
 // CRUD FOR NOTIFICATIONS OF EVENTS ------------------------------------------------------------------------------------------------------------
+export const getAllNotifications = async () : Promise<Result<NotificationOfEvent[]>> => {
+    const notifsPromise = pool.query<RowDataPacket[]>(`SELECT * FROM notifs_events_subscriptions;`)
+    const [err, subs] = await handle(notifsPromise)
+    if (err || !subs) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = subs
+    return [null, rows as NotificationOfEvent[]]
+}
+
+export const getNotificationsOfSubscriber = async (id: number) : Promise<Result<Notification[]>> => {
+    const notifsPromise = pool.query<RowDataPacket[]>(`
+        SELECT * FROM notifs_events_subscriptions where subscriberId = ?;`, [id])
+    const [err, sub] = await handle(notifsPromise)
+    if (err) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = sub
+    return [null, rows as Notification[]]
+}
+
+export const getNotificationsOfEvent = async (id: number) => {
+    const notifsPromise = pool.query<RowDataPacket[]>(`
+        SELECT * FROM notifs_events_subscriptions where eventId = ?;`, [id])
+    const [err, sub] = await handle(notifsPromise)
+    if (err) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = sub
+    return [null, rows as Notification[]]
+}
+
+export const createNotification = async (n : NotificationOfEventC) => {
+    const keys = Object.keys(n)
+    const values = Object.values(n)
+    const createPromise = pool.query<ResultSetHeader>(
+        `
+        INSERT INTO notifs_events_subscriptions (${addSyntaxSql(keys)})
+        VALUES (${getValueSyntax(values)});
+        `,
+        values
+    )
+    const [err, resp] = await handle(createPromise)
+    if (err || !resp) {
+        return [err, null]
+    }
+    return resp[0].affectedRows === 1 ? [null,{success: true, insertId: resp[0].insertId}] : [null,{success : false, insertId: - 1}]
+}
+
+export const deleteNotification = async (id: number) : Promise<Result<boolean>> => {
+    const delPromise = pool.query<ResultSetHeader>(`DELETE FROM notifs_events_subscriptions where id = ?`, [id])
+    const [err, resp] = await handle(delPromise)
+    if (err || resp[0].affectedRows < 1) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [r, f] = resp
+    return r.affectedRows === 1 ? [null, true]: [null, false]
+}
+
+// tests
+// console.log(await createNotification({ subscriberId: 1, eventId: 4, notif: "Bla Bla Bla" }))
+// console.log(await getAllNotifications())
+// console.log(await getNotificationsOfEvent(4))
+// console.log(await getNotificationsOfSubscriber(1))
+

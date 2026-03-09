@@ -42,6 +42,6 @@ CREATE TABLE notifs_events_subscriptions (
     subscriberId integer,
     eventId integer,
     notif TEXT,
-    FOREIGN KEY (subscriberId) REFERENCES subscriptions(id) ON DELETE SET NULL;
+    FOREIGN KEY (subscriberId) REFERENCES users(id) ON DELETE SET NULL;
     FOREIGN KEY (eventId) REFERENCES events_subscriptions(id) ON DELETE SET NULL;
 );

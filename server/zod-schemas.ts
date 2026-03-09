@@ -26,6 +26,16 @@ export const updateSubscriptionReqSchema = z.object({
     repo: z.string().nullable().optional(),
 }).strict();
 
+export const updateSubscriptionSchema = z.object({
+    id: z.number(),
+    subscriber: z.number().nullable().optional(),
+    username: z.string().nullable().optional(),
+    repo: z.string().nullable().optional(),
+    latestCommitSha: z.string().nullable().optional(),
+    latestEventTime: z.date().nullable().optional(),
+}).strict();
+
+
 
 // Users Crud Req Body for Server
 export const getParticularUserReqSchema = z.object({
@@ -102,14 +112,20 @@ export const getNotificationByEventIdReqSchema = z.object({
 export type User = z.infer<typeof updateUserReqSchema>
 export type UserC = z.infer<typeof addUserReqSchema>
 
-export type Subscription = z.infer<typeof updateSubscriptionReqSchema>
+export type Subscription = z.infer<typeof updateSubscriptionSchema>
 export type SubscriptionC = z.infer<typeof addSubscriptionReqSchema>
 
 export type EventSubscription = z.infer<typeof updateEventForASubscriptionReqSchema>
 export type EventSubscriptionC = z.infer<typeof addEventForASubscriptionReqSchema>
 
-export type Notification = {
+export type NotificationOfEvent = {
     id: number,
+    subscriberId: number,
+    eventId: number,
+    notif: string
+}
+
+export type NotificationOfEventC = {
     subscriberId: number,
     eventId: number,
     notif: string
