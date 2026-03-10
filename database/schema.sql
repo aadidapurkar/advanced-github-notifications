@@ -6,33 +6,54 @@ CREATE TABLE users (
     username VARCHAR(39) NOT NULL,
     email TEXT,
     browserNotifPushURL TEXT,
+    slackWebhookURL TEXT,
+    discordWebhookURL TEXT,
     encryptedPAT TEXT,
-    created TIMESTAMP NOT NULL DEFAULT NOW()
+    created TIMESTAMP NOT NULL DEFAULT NOW(),
 );
 
 
 CREATE TABLE subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
-    subscriber integer NOT NULL,
+    subscriber integer NOT NULL, -- id of user
     username TEXT NOT NULL,
     repo TEXT NOT NULL,
     latestCommitSha TEXT,
-    latestEventTime DATETIME DEFAULT '1900-01-01 00:00:00',
+    latestEventTime DATETIME DEFAULT '1900-01-01 00:00:00', -- used to not parse githubevents that have already been parsed but are currently being polled on
     FOREIGN KEY (subscriber) REFERENCES users(id)
 );
 
 
 CREATE TABLE events_subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
-    subscriptionRef integer,
+    subscriptionRef integer NOT NULL, -- id of subsription
     eventType VARCHAR(39) NOT NULL,
+
+    -- Global Filters
+    actionMade TEXT,
+    actorUsername TEXT,
+    booleanQuery JSON,
+
+    -- Push / Commit Filters
     commitMsgSubstring TEXT,
-    issueCommentContains TEXT,
     gitDiffPatchPrompt TEXT,
     gitDiffSize INTEGER,
-    particularBranch TEXT, 
     fileChanged TEXT,
-    booleanQuery JSON,
+
+    -- Branch / Tag Filters
+    sourceBranch TEXT,            
+    targetBranch VARCHAR(255),       
+    refType VARCHAR(20),              
+
+    -- Issue / PR Filters
+    issueCommentContains TEXT,
+    hasLabel VARCHAR(255),           
+    isMerged BOOLEAN,               
+    reviewState VARCHAR(30),  
+    hasLabel TEXT,
+    reviewState TEXT,
+    
+
     FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id) ON DELETE SET NULL
 );
 
