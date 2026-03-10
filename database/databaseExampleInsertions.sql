@@ -24,6 +24,7 @@ INSERT INTO EVENTS_SUBSCRIPTIONS (subscriptionRef, eventType) VALUES
         (1, "CreateEvent"),
         (1, "ReleaseEvent"),
         (1, "IssuesEvent"),
+        (1, "PushEvent"),
 
         (2, "CreateEvent"),
         (2, "ReleaseEvent"),
@@ -35,4 +36,4 @@ INSERT INTO EVENTS_SUBSCRIPTIONS (subscriptionRef, eventType) VALUES
         (3, "GollumEvent"),
         (3, "ReleaseEvent"),
         (3, "IssuesEvent"),
-
+        (3, "PushEvent");
