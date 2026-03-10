@@ -1,17 +1,13 @@
 import express, { Request, Response, NextFunction, json } from "express";
 import { usersRouter } from "./routes/users";
 import { subscriptionsRouter } from "./routes/subscriptions";
-import {
-  getCommitsFromPushEvent,
-  getLatestRepoEvents,
-} from "../github-rest-api/githubApi";
+
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
-import { EventSubscription, GithubEvent, Notification, Subscription } from "../types";
 import { eventsSubscriptionRouter } from "./routes/events-subscriptions";
 const app = express();
 app.use(json());

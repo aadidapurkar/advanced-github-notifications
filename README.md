@@ -22,6 +22,10 @@
 ### Notes
 - Opted for Github REST API implementation instead of Webhooks to allow usage on repos where the user is not an administrator
 
+### Useful Docs
+- [fields in each event response ](https://docs.github.com/en/rest/using-the-rest-api/github-event-types?apiVersion=2022-11-28&search-overlay-input=github+repository+event+response+schema&search-overlay-ask-ai=true)
+- [fields in the payload field of each event (shows both common fields and those specific to paritcular events)](https://docs.github.com/en/rest/using-the-rest-api/github-event-types?apiVersion=2022-11-28&search-overlay-input=github+repository+event+response+schema&search-overlay-ask-ai=true#event-object-common-properties)
+
 ### Visual Overview
 (note: not up to date)
 ![visual project diagram](diagram.png)  
@@ -29,3 +33,12 @@
 
 ### Flow Example
 ![user flow](flow.png)
+
+
+### Misc (useful commands)
+- add mysql to path on windows `alias mysql="winpty 'C:/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe'"`
+- connected to mysql `mysql -u root -p`
+- run a typescript file, `npx tsx file.ts`
+- install custom node version `nvm install 25.7.0` then `nvm use 25.7.0`
+- mysql specific queries - show databases; use db_name; describe table_name; describe db_name; 
+
