@@ -27,7 +27,7 @@ const octokit = new Octokit({
 });
 
 
-// Get github events
+// Get github events for a subscription (a subscription can be distinguished by a repository and its owner)
 export const getRecentGithubEventsForSubscription = async (
   owner: string,
   repo: string
@@ -46,7 +46,7 @@ export const getRecentGithubEventsForSubscription = async (
 };
 // console.log(await getRecentGithubEventsForSubscription("microsoft", "vscode")); // test above fn
 
-// Filter for unparsed events
+// Filter for unparsed events (assumes that the latestEventTime arg will be parsed/queries for the subscription prior to calling this function)
 export const getUnparsedEvents = (
   es: GithubRepoEvent[], 
   latestEventTime: Date
@@ -61,9 +61,8 @@ export const getUnparsedEvents = (
 // const testRes = await getRecentGithubEventsForSubscription("aadidapurkar", "test-notif");
 // console.log(await getUnparsedEvents(testRes[1]!, new Date("2026-03-05")).length)
 
-
-
-
+// Returns an array of tuples of size two. fst represents repo owner, snd represents repo name
+// Used to prevent duplicate requests to Github REST API
 export const getUniqueSubscriptions = async () : Promise<Result<[string, string][]>> => {
   let res : [string, string][]= []
   const [err, subs] = await getSubscriptions();
@@ -81,25 +80,27 @@ export const getUniqueSubscriptions = async () : Promise<Result<[string, string]
   return [null, res]
 }
 
-  // could probably make this function better, it fetches subscriptions from db each time
-
+// could probably make this function better, it fetches subscriptions from db each call
 export const getGithubEventsOfEachSubscription = async () : Promise<Result<[Subscription, GithubRepoEvent[]][]>> => {
+
   let res : [Subscription, GithubRepoEvent[]][] = []
-  const keySubscriptionIdValueSubscription : { [key: number]: Subscription } = {}
+
+  // get subscriptions 
   const [err1, subs] = await getSubscriptions()
   if (err1) {
     return [err1, null]
   }
-  subs.forEach((s : Subscription) => {
-    keySubscriptionIdValueSubscription[s.id] = s
-  })
-  
+
+  // get unique subscriptions  
   const [err2, uniqueSubs] = await getUniqueSubscriptions()
   if (err2) {
     return [err2, null]
   }
+
+  // hash table, keys rperesnet user-repo in that exact format, values are arrays of github events
   const keyUserRepoValueEvents : { [key: string]: GithubRepoEvent[] } = {}
   
+  // for each unique subscription, get recent github events and add it to the hash table
   for (const [owner, repo] of uniqueSubs) {
     const k = `${owner}-${repo}`
     const [err, events] = await getRecentGithubEventsForSubscription(owner, repo)
@@ -110,6 +111,7 @@ export const getGithubEventsOfEachSubscription = async () : Promise<Result<[Subs
     keyUserRepoValueEvents[k] = events!
   }
 
+  // for each subscription, retrieve the events from the hash table (effectively acting as a cache for duplicate subscriptions)
   subs.forEach((s : Subscription) => {
     const k = `${s.username!}-${s.repo!}`
     res.push([s, keyUserRepoValueEvents[k]!])
@@ -124,6 +126,8 @@ export const getGithubEventsOfEachSubscription = async () : Promise<Result<[Subs
 // }
 
 
+// filter an array of github events to only include the events being listened for by a subscription
+// (note that 1 subscription row may have many events_subscription rows)
 export const filterGithubEventsArrayForDesiredEventsOfSubscription = async (es: GithubRepoEvent[], s : Subscription) : Promise<Result<GithubRepoEvent[]>> => {
   const [err, eventsUserIsListeningFor] = await getEventsForSubscriptionId(s.id)
   if (err) {
