@@ -17,6 +17,7 @@
 - `encryption` defines functions which use a 32char key to encrypt/decrypt a string (useful for storing Personal Access Token PAT for Github / other sensitive info  in DB)
 - `server` polls github, cruds database, sends notifs to users, as well as request schemas (and inferred types)
 - `github-rest-api` defines functions which use octokit and github rest api to get data for subscriptions and events
+- `notifications` defines behaviour for sending email/discord/slack/browser notifications
 
 ### Notes
 - Opted for Github REST API implementation instead of Webhooks to allow usage on repos where the user is not an administrator
