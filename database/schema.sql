@@ -9,7 +9,7 @@ CREATE TABLE users (
     slackWebhookURL TEXT,
     discordWebhookURL TEXT,
     encryptedPAT TEXT,
-    created TIMESTAMP NOT NULL DEFAULT NOW(),
+    created TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 
@@ -26,7 +26,7 @@ CREATE TABLE subscriptions (
 
 CREATE TABLE events_subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
-    subscriptionRef integer NOT NULL, -- id of subsription
+    subscriptionRef integer, -- id of subsription
     eventType VARCHAR(39) NOT NULL,
 
     -- Global Filters
@@ -50,8 +50,6 @@ CREATE TABLE events_subscriptions (
     hasLabel VARCHAR(255),           
     isMerged BOOLEAN,               
     reviewState VARCHAR(30),  
-    hasLabel TEXT,
-    reviewState TEXT,
     
 
     FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id) ON DELETE SET NULL
@@ -63,8 +61,8 @@ CREATE TABLE notifs_events_subscriptions (
     subscriberId integer,
     eventId integer,
     subscriptionId integer,
-    notif TEXT,
-    FOREIGN KEY (subscriberId) REFERENCES users(id) ON DELETE SET NULL;
-    FOREIGN KEY (eventId) REFERENCES events_subscriptions(id) ON DELETE SET NULL;
-    FOREIGN KEY (subscriptionId) REFERENCES subscriptions(id) ON DELETE SET NULL;
+    notif TEXT, 
+    FOREIGN KEY (subscriberId) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (eventId) REFERENCES events_subscriptions(id) ON DELETE SET NULL,
+    FOREIGN KEY (subscriptionId) REFERENCES subscriptions(id) ON DELETE SET NULL
 );
