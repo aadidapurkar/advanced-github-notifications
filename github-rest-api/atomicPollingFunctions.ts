@@ -136,7 +136,7 @@ export const filterGithubEventsArrayForDesiredEventsOfSubscription = async (es: 
   const eventTypesUserIsListeningFor = eventsUserIsListeningFor.map((e) => e.eventType!)
 
   const filteredEvents = es.filter((e) => eventTypesUserIsListeningFor.includes(e.type!))
-  console.log(`filterEvents length ${filteredEvents.length} original events ${es.length}`)
+  // console.log(`filterEvents length ${filteredEvents.length} original events ${es.length}`)
   return [null, filteredEvents]
 }
 

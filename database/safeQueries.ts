@@ -297,7 +297,7 @@ export const getNotificationsOfSubscriber = async (id: number) : Promise<Result<
     return [null, rows as Notification[]]
 }
 
-export const getNotificationsOfEvent = async (id: number) => {
+export const getNotificationsOfEvent = async (id: number) : Promise<Result<Notification[]>> => {
     const notifsPromise = pool.query<RowDataPacket[]>(`
         SELECT * FROM notifs_events_subscriptions where eventId = ?;`, [id])
     const [err, sub] = await handle(notifsPromise)
@@ -308,7 +308,18 @@ export const getNotificationsOfEvent = async (id: number) => {
     return [null, rows as Notification[]]
 }
 
-export const createNotification = async (n : NotificationOfEventC) => {
+
+export const getNotificationsOfSubscription = async (id: number) : Promise<Result<Notification[]>> => {
+    const notifsPromise = pool.query<RowDataPacket[]>(`
+        SELECT * FROM notifs_events_subscriptions where subscriptionId = ?;`, [id])
+    const [err, sub] = await handle(notifsPromise)
+    if (err) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [rows, fields] = sub
+    return [null, rows as Notification[]]
+}
+export const createNotification = async (n : NotificationOfEventC) : Promise<Result<{success: boolean, insertId: number}>> => {
     const keys = Object.keys(n)
     const values = Object.values(n)
     const createPromise = pool.query<ResultSetHeader>(
@@ -325,7 +336,7 @@ export const createNotification = async (n : NotificationOfEventC) => {
     return resp[0].affectedRows === 1 ? [null,{success: true, insertId: resp[0].insertId}] : [null,{success : false, insertId: - 1}]
 }
 
-export const deleteNotification = async (id: number) : Promise<Result<boolean>> => {
+export const deleteNotificationById = async (id: number) : Promise<Result<boolean>> => {
     const delPromise = pool.query<ResultSetHeader>(`DELETE FROM notifs_events_subscriptions where id = ?`, [id])
     const [err, resp] = await handle(delPromise)
     if (err || resp[0].affectedRows < 1) {
@@ -333,6 +344,36 @@ export const deleteNotification = async (id: number) : Promise<Result<boolean>> 
     }
     const [r, f] = resp
     return r.affectedRows === 1 ? [null, true]: [null, false]
+}
+
+export const deleteNotificationsByEventId = async (id: number) : Promise<Result<boolean>> => {
+    const delPromise = pool.query<ResultSetHeader>(`DELETE FROM notifs_events_subscriptions where eventId = ?`, [id])
+    const [err, resp] = await handle(delPromise)
+    if (err || resp[0].affectedRows < 1) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [r, f] = resp
+    return r.affectedRows === 1 ? [null, true]: [null, false]   
+}
+
+export const deleteNotificationsBySubscriptionId = async (id: number) : Promise<Result<boolean>> => {
+    const delPromise = pool.query<ResultSetHeader>(`DELETE FROM notifs_events_subscriptions where subscriptionId = ?`, [id])
+    const [err, resp] = await handle(delPromise)
+    if (err || resp[0].affectedRows < 1) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [r, f] = resp
+    return r.affectedRows === 1 ? [null, true]: [null, false]   
+}
+
+export const deleteNotificationsByUserId = async (id: number) : Promise<Result<boolean>> => {
+    const delPromise = pool.query<ResultSetHeader>(`DELETE FROM notifs_events_subscriptions where subscriberId = ?`, [id])
+    const [err, resp] = await handle(delPromise)
+    if (err || resp[0].affectedRows < 1) {
+        return [err ? err : new Error("DB Error"), null]
+    }
+    const [r, f] = resp
+    return r.affectedRows === 1 ? [null, true]: [null, false]   
 }
 
 // tests

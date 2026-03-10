@@ -5,7 +5,6 @@ import { Octokit } from "octokit";
 import makeFetchHappen from "make-fetch-happen";
 import path from "path";
 import { fileURLToPath } from "url";
-import { GithubEvent, PushEvent } from "../types";
 import { updateSubscription } from "../database/safeQueries";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,11 +66,11 @@ export const getCommitsFromPushEvent = async (
   const h = e.payload.head;
   const ZERO_SHA = "0000000000000000000000000000000000000000";
   if (h === ZERO_SHA) {
-    console.log("Branch was deleted. No new commits to compare.");
+    // console.log("Branch was deleted. No new commits to compare.");
     return { commits: [] }; // Return an empty array to prevent breaking downstream map() functions
   }
 if (b === ZERO_SHA) {
-    console.log("New branch created! Fetching the head commit metadata.");
+    // console.log("New branch created! Fetching the head commit metadata.");
     const res = await octokit.rest.repos.getCommit({
       owner: owner,
       repo: repo,

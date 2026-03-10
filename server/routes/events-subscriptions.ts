@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction, json } from 'express';
+import express, { Request, Response } from 'express';
 import {addEventForASubscriptionReqSchema, deleteEventForASubscriptionReqSchema, getAllEventsOfSubscriberReqSchema, updateEventForASubscriptionReqSchema } from "../zod-schemas"
 
 import { createEventForSubscription, deleteEventById, getAllEventsForAllSubscriptions, getEventsForSubscriptionId, updateEvent} from '../../database/safeQueries';

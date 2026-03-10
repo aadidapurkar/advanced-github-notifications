@@ -9,11 +9,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import { eventsSubscriptionRouter } from "./routes/events-subscriptions";
+import { notifRouter } from "./routes/notifications";
 const app = express();
 app.use(json());
 app.use("/users", usersRouter);
 app.use("/subscriptions", subscriptionsRouter);
 app.use("/events-subscriptions", eventsSubscriptionRouter);
+app.use("/notifs", notifRouter);
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.log(err.stack);

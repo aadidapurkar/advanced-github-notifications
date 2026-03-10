@@ -104,9 +104,33 @@ export const updateEventForASubscriptionReqSchema = z.object({
 }).strict();
 
 
-// Notifications GET for Event
+// Notifications CRUD
 export const getNotificationByEventIdReqSchema = z.object({
-    id: z.number() // subscriber id not notif id
+    id: z.number() 
+}).strict();
+
+export const getNotificationBySubscriberIdReqSchema = z.object({
+    id: z.number() 
+}).strict();
+
+export const getNotificationBySubscriptionIdReqSchema = z.object({
+    id: z.number() 
+}).strict();
+
+export const deleteNotificationByEventIdReqSchema = z.object({
+    id: z.number() 
+}).strict();
+
+export const deleteNotificationByNotifIdReqSchema = z.object({
+    id: z.number() 
+}).strict();
+
+export const deleteNotificationBySubscriptionIdReqSchema = z.object({
+    id: z.number() 
+}).strict();
+
+export const deleteNotificationByUserIdReqSchema = z.object({
+    id: z.number() 
 }).strict();
 
 export type User = z.infer<typeof updateUserReqSchema>
