@@ -31,26 +31,65 @@ CREATE TABLE events_subscriptions (
 
     -- Global Filters
     actionMade TEXT,
-    actorUsername TEXT,
+    actorUsername TEXT, -- ignore
     booleanQuery JSON,
+    targetAuthorUsername TEXT,
+    targetCommiterUsername TEXT,
 
     -- Push / Commit Filters
+    pusherType VARCHAR(20),
+    minCommitCount INTEGER,
+    maxCommitCount INTEGER
     commitMsgSubstring TEXT,
     gitDiffPatchPrompt TEXT,
     gitDiffSize INTEGER,
     fileChanged TEXT,
 
+
     -- Branch / Tag Filters
     sourceBranch TEXT,            
     targetBranch VARCHAR(255),       
     refType VARCHAR(20),              
+    branchCreated BOOLEAN,
+    branchDeleted BOOLEAN,
 
     -- Issue / PR Filters
-    issueCommentContains TEXT,
+    requestedReviewerUsername TEXT,
+    pullRequestIsDraft BOOLEAN,
+    assigneeUsername TEXT,
+    pullRequestTitleContains TEXT,
+    pullRequestBodyContains TEXT,
+    issueBodyContains TEXT,
+    issueTitleContains TEXT,
+    issueCommentBodyContains TEXT,
+    commitCommentBodyContains TEXT,
+    reviewCommentBodyContains TEXT
     hasLabel VARCHAR(255),           
     isMerged BOOLEAN,               
     reviewState VARCHAR(30),  
     
+    -- Release
+    isPreRelease BOOLEAN,
+    releaseTagSubstring TEXT,
+    releaseNameContains TEXT,
+    releaseBodyContains TEXT
+
+    -- Gollum/Wiki
+    wikiPageTitle TEXT,
+    wikiPageName TEXT,
+    wikiPageAction VARCHAR(20),
+
+    -- MemberEvent
+    addedMemberUsername TEXT,
+
+    -- ForkEvent
+    isFork BOOLEAN,
+    forkOwnerUsername TEXT,
+
+    -- DiscussionEvent
+    discussionTitleContains TEXT,
+    discussionBodyContains TEXT,
+    discussionCategory TEXT
 
     FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id) ON DELETE SET NULL
 );
