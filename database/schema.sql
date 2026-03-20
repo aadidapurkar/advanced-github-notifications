@@ -39,7 +39,7 @@ CREATE TABLE events_subscriptions (
     -- Push / Commit Filters
     pusherType VARCHAR(20),
     minCommitCount INTEGER,
-    maxCommitCount INTEGER
+    maxCommitCount INTEGER,
     commitMsgSubstring TEXT,
     gitDiffPatchPrompt TEXT,
     gitDiffSize INTEGER,
@@ -53,26 +53,32 @@ CREATE TABLE events_subscriptions (
     branchCreated BOOLEAN,
     branchDeleted BOOLEAN,
 
-    -- Issue / PR Filters
-    requestedReviewerUsername TEXT,
-    pullRequestIsDraft BOOLEAN,
-    assigneeUsername TEXT,
+    -- Pull Request Filters
     pullRequestTitleContains TEXT,
     pullRequestBodyContains TEXT,
-    issueBodyContains TEXT,
+    pullRequestIsDraft BOOLEAN,
+    requestedReviewerUsername TEXT,
+    reviewCommentBodyContains TEXT,
+    reviewState VARCHAR(30),
+    isMerged BOOLEAN,
+
+    -- Issue Filters
     issueTitleContains TEXT,
+    issueBodyContains TEXT,
     issueCommentBodyContains TEXT,
+
+    -- Shared Issue & PR Filters
+    assigneeUsername TEXT,
+    hasLabel VARCHAR(255),
+
+    -- Commit Comment Filters
     commitCommentBodyContains TEXT,
-    reviewCommentBodyContains TEXT
-    hasLabel VARCHAR(255),           
-    isMerged BOOLEAN,               
-    reviewState VARCHAR(30),  
     
     -- Release
     isPreRelease BOOLEAN,
     releaseTagSubstring TEXT,
     releaseNameContains TEXT,
-    releaseBodyContains TEXT
+    releaseBodyContains TEXT,
 
     -- Gollum/Wiki
     wikiPageTitle TEXT,
@@ -89,7 +95,7 @@ CREATE TABLE events_subscriptions (
     -- DiscussionEvent
     discussionTitleContains TEXT,
     discussionBodyContains TEXT,
-    discussionCategory TEXT
+    discussionCategory TEXT,
 
     FOREIGN KEY (subscriptionRef) REFERENCES subscriptions(id) ON DELETE SET NULL
 );

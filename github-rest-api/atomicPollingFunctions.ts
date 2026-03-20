@@ -6,7 +6,13 @@ import { Octokit } from "octokit";
 import makeFetchHappen from "make-fetch-happen";
 import path from "path";
 import { fileURLToPath } from "url";
-import { CommitPayload, GithubRepoEvent, ZERO_SHA } from "../types";
+import {
+  CommitPayload,
+  GithubRepoEvent,
+  ZERO_SHA,
+  FlattenedEvent,
+  EventType,
+} from "../types";
 import {
   getEventsForSubscriptionId,
   getSubscriptionBySubscriptionId,
@@ -50,6 +56,7 @@ export const getRecentGithubEventsForSubscription = async (
 // console.log(await getRecentGithubEventsForSubscription("microsoft", "vscode")); // test above fn
 
 // Filter for unparsed events (assumes that the latestEventTime arg will be parsed/queries for the subscription prior to calling this function)
+// basically, if an event has been parsed at an earlier poll, we dont want to parse it again
 export const getUnparsedEvents = (
   es: GithubRepoEvent[],
   latestEventTime: Date,
@@ -83,7 +90,7 @@ export const getUniqueSubscriptions = async (): Promise<
   return [null, res];
 };
 
-// could probably make this function better, it fetches subscriptions from db each call
+// could probably write this function more elgantly, but it fetches subscriptions and their corresponding github events
 export const getGithubEventsOfEachSubscription = async (): Promise<
   Result<[Subscription, GithubRepoEvent[]][]>
 > => {
@@ -133,13 +140,16 @@ export const getGithubEventsOfEachSubscription = async (): Promise<
 
 // filter an array of github events to only include the events being listened for by a subscription
 // (note that 1 subscription row may have many events_subscription rows)
+// important - this is distinct/unrelated to getUnparsedEvents
+// what this does, is it narrows the entire retrieved events to only those that a user is interested in for a subscription
+// after this, the remaining events may need to be hydrated with additional data for potential detailed queries, and then further parsed, before notifying
 export const filterGithubEventsArrayForDesiredEventsOfSubscription = async (
   es: GithubRepoEvent[],
   s: Subscription,
 ): Promise<Result<GithubRepoEvent[]>> => {
   const [err, eventsUserIsListeningFor] = await getEventsForSubscriptionId(
     s.id,
-  );
+  ); // note, refactor this because it will redundantly contain the sameevent type multiple times if user has different notifs for the same event
   if (err) {
     return [err, null];
   }
@@ -157,43 +167,320 @@ export const filterGithubEventsArrayForDesiredEventsOfSubscription = async (
 // const [err2, events] = await getRecentGithubEventsForSubscription("microsoft", "vscode");
 // const res = await filterGithubEventsArrayForDesiredEventsOfSubscription(events!, testSub!)
 
-// use PushEvent payload to get detailed commit info (todo handle new branch case?)
-export const getDetailedCommitInfo = async (
-  owner: string,
-  repo: string,
-  before: string,
-  head: string,
-): Promise<Result<CommitPayload>> => {
-  // branch deletion
+// 1. Extraction functions
+export const extractPullRequestData = (
+  event: GithubRepoEvent,
+): FlattenedEvent => {
+  const payload = event.payload as any;
+  const pr = payload.pull_request;
+  const comment = payload.comment;
+  const review = payload.review;
+
+  const data: FlattenedEvent = {
+    eventType: event.type as EventType,
+    actionMade: payload.action,
+    actorUsername: event.actor.login,
+  };
+
+  if (pr) {
+    data.sourceBranch = pr.head?.ref;
+    data.targetBranch = pr.base?.ref;
+    data.pullRequestTitleContains = pr.title;
+    data.pullRequestBodyContains = pr.body;
+    data.pullRequestIsDraft = pr.draft;
+    data.isMerged = pr.merged;
+    data.targetAuthorUsername = pr.user?.login;
+    if (pr.requested_reviewers) {
+      data.requestedReviewerUsername = pr.requested_reviewers
+        .map((r: any) => r.login)
+        .join(",");
+    }
+    if (pr.assignee) {
+      data.assigneeUsername = pr.assignee.login;
+    } else if (pr.assignees && pr.assignees.length > 0) {
+      data.assigneeUsername = pr.assignees.map((a: any) => a.login).join(",");
+    }
+    if (pr.labels) {
+      data.hasLabel = pr.labels.map((l: any) => l.name).join(",");
+    }
+  }
+
+  if (comment) {
+    data.reviewCommentBodyContains = comment.body;
+  }
+
+  if (review) {
+    data.reviewState = review.state;
+  }
+
+  return data;
+};
+
+
+// Raw Github Event JSON from Github REST API --> Flattened JSON object matching events_subscriptions in schema.sql
+export const extractIssueData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  const issue = payload.issue;
+  const comment = payload.comment;
+
+  const data: FlattenedEvent = {
+    eventType: event.type as EventType,
+    actionMade: payload.action,
+    actorUsername: event.actor.login,
+  };
+
+  if (issue) {
+    data.issueTitleContains = issue.title;
+    data.issueBodyContains = issue.body?.substring(0, 3000) ?? null;
+    data.targetAuthorUsername = issue.user?.login;
+    if (issue.assignee) {
+      data.assigneeUsername = issue.assignee.login;
+    } else if (issue.assignees && issue.assignees.length > 0) {
+      data.assigneeUsername = issue.assignees
+        .map((a: any) => a.login)
+        .join(",");
+    }
+    if (issue.labels) {
+      data.hasLabel = issue.labels.map((l: any) => l.name).join(",");
+    }
+  }
+
+  if (comment) {
+    data.issueCommentBodyContains = comment.body;
+  }
+
+  return data;
+};
+
+export const extractReleaseData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  const release = payload.release;
+
+  return {
+    eventType: event.type as EventType,
+    actionMade: payload.action,
+    actorUsername: event.actor.login,
+    isPreRelease: release?.prerelease,
+    releaseTagSubstring: release?.tag_name,
+    releaseNameContains: release?.name,
+    releaseBodyContains: release?.body,
+  };
+};
+
+export const extractDiscussionData = (
+  event: GithubRepoEvent,
+): FlattenedEvent => {
+  const payload = event.payload as any;
+  const discussion = payload.discussion;
+
+  return {
+    eventType: event.type as EventType,
+    actionMade: payload.action,
+    actorUsername: event.actor.login,
+    discussionTitleContains: discussion?.title,
+    discussionBodyContains: discussion?.body,
+    discussionCategory: discussion?.category?.name,
+  };
+};
+
+export const extractCommitCommentData = (
+  event: GithubRepoEvent,
+): FlattenedEvent => {
+  const payload = event.payload as any;
+  return {
+    eventType: event.type as EventType,
+    actorUsername: event.actor.login,
+    commitCommentBodyContains: payload.comment?.body,
+    targetAuthorUsername: payload.comment?.user?.login,
+  };
+};
+
+export const extractGollumData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  const page = payload.pages?.[0];
+  return {
+    eventType: event.type as EventType,
+    actorUsername: event.actor.login,
+    wikiPageTitle: page?.title,
+    wikiPageName: page?.page_name,
+    wikiPageAction: page?.action,
+  };
+};
+
+export const extractMemberData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  return {
+    eventType: event.type as EventType,
+    actionMade: payload.action,
+    actorUsername: event.actor.login,
+    addedMemberUsername: payload.member?.login,
+  };
+};
+
+export const extractForkData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  return {
+    eventType: event.type as EventType,
+    actorUsername: event.actor.login,
+    isFork: true,
+    forkOwnerUsername: payload.forkee?.owner?.login,
+  };
+};
+
+export const extractCreateData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  return {
+    eventType: event.type as EventType,
+    actorUsername: event.actor.login,
+    refType: payload.ref_type,
+    targetBranch: payload.ref,
+    branchCreated: payload.ref_type === "branch",
+  };
+};
+
+export const extractDeleteData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  return {
+    eventType: event.type as EventType,
+    actorUsername: event.actor.login,
+    refType: payload.ref_type,
+    targetBranch: payload.ref,
+    branchDeleted: payload.ref_type === "branch",
+  };
+};
+
+export const extractDefaultData = (event: GithubRepoEvent): FlattenedEvent => {
+  const payload = event.payload as any;
+  return {
+    eventType: event.type as EventType,
+    actionMade: payload.action,
+    actorUsername: event.actor.login,
+  };
+};
+
+export const hydrateAndExtractPushEvent = async (
+  event: GithubRepoEvent,
+): Promise<Result<FlattenedEvent>> => {
+  const payload = event.payload as any;
+  const repoFullName = event.repo.name;
+  const [owner, repo] = repoFullName.split("/");
+  const before = payload.before;
+  const head = payload.head;
+
+  const data: FlattenedEvent = {
+    eventType: event.type as EventType,
+    actorUsername: event.actor.login,
+    pusherType: payload.pusher_type || payload.pusher?.type,
+    minCommitCount: payload.commits?.length,
+    maxCommitCount: payload.commits?.length,
+    commitMsgSubstring: payload.commits?.map((c: any) => c.message).join("; "),
+  };
+
+  if (payload.ref) {
+    data.targetBranch = payload.ref
+      .replace("refs/heads/", "")
+      .replace("refs/tags/", "");
+    data.refType = payload.ref.startsWith("refs/tags/") ? "tag" : "branch";
+  }
+
   if (head === ZERO_SHA) {
-    return [null, { commits: [], files: [], BranchCreationDeletion: "delete" }];
-  } else {
-    try {
+    data.branchDeleted = true;
+    return [null, data];
+  }
+
+  try {
+    let files: any[] = [];
+    let commits: any[] = [];
+
+    if (before === ZERO_SHA) {
+      data.branchCreated = true;
+      // Just get the single head commit instead of comparing
+      const resp = await octokit.rest.repos.getCommit({
+        owner,
+        repo,
+        ref: head,
+      });
+      if (resp.data.files) files = resp.data.files;
+      commits = [resp.data]; // Wrap the single commit in an array to match comparison structure
+    } else {
+      // Normal push comparison
       const resp = await octokit.rest.repos.compareCommitsWithBasehead({
         owner,
         repo,
         basehead: `${before}...${head}`,
       });
-
-      return [
-        null,
-        {
-          commits: resp.data.commits,
-          files: resp.data.files,
-          BranchCreationDeletion: before === ZERO_SHA ? "create" : undefined,
-        },
-      ];
-    } catch {
-      return [new Error("Error fetching commit comparison"), null];
+      if (resp.data.files) files = resp.data.files;
+      if (resp.data.commits) commits = resp.data.commits;
     }
+
+    // Now process the files and commits identically
+    data.gitDiffSize = files.reduce(
+      (acc: number, f: any) => acc + (f.changes || 0),
+      0,
+    );
+
+    const combinedPatches = files
+      .map((f: any) => f.patch)
+      .filter(Boolean)
+      .join("\n");
+    data.gitDiffPatchPrompt = combinedPatches.substring(0, 3000);
+
+    data.fileChanged = files.map((f: any) => f.filename).join(",");
+
+    data.targetAuthorUsername = Array.from(
+      new Set(
+        commits
+          .map((c: any) => c.author?.login || c.commit?.author?.name)
+          .filter(Boolean),
+      ),
+    ).join(",");
+
+    data.targetCommiterUsername = Array.from(
+      new Set(
+        commits
+          .map((c: any) => c.committer?.login || c.commit?.committer?.name)
+          .filter(Boolean),
+      ),
+    ).join(",");
+
+    return [null, data];
+  } catch (error) {
+    console.error("Hydration Error: ", error); // Good for debugging
+    return [new Error("Error fetching commit comparison/details"), null];
   }
 };
 
-// const [err, res] = await getDetailedCommitInfo(
-//   "aadidapurkar",
-//   "test-notif",
-//   "8435101f78b02788f871335075df0a1a71a8778e",
-//   "2060c6e4e1a2eb64e59eb03e8fc5ba0c3868d242",
-// );
-// console.log(res);
-
+// 3. Master router function
+export const mapEventToSchema = async (
+  event: GithubRepoEvent,
+): Promise<Result<FlattenedEvent>> => {
+  switch (event.type) {
+    case "PushEvent":
+      return await hydrateAndExtractPushEvent(event);
+    case "PullRequestEvent":
+    case "PullRequestReviewEvent":
+    case "PullRequestReviewCommentEvent":
+      return [null, extractPullRequestData(event)];
+    case "IssuesEvent":
+    case "IssueCommentEvent":
+      return [null, extractIssueData(event)];
+    case "ReleaseEvent":
+      return [null, extractReleaseData(event)];
+    case "DiscussionEvent":
+      return [null, extractDiscussionData(event)];
+    case "CommitCommentEvent":
+      return [null, extractCommitCommentData(event)];
+    case "GollumEvent":
+      return [null, extractGollumData(event)];
+    case "MemberEvent":
+      return [null, extractMemberData(event)];
+    case "ForkEvent":
+      return [null, extractForkData(event)];
+    case "CreateEvent":
+      return [null, extractCreateData(event)];
+    case "DeleteEvent":
+      return [null, extractDeleteData(event)];
+    default:
+      return [null, extractDefaultData(event)];
+  }
+};

@@ -29,4 +29,77 @@ export type EventType =
   | "GollumEvent"
   | "ReleaseEvent"
   | "PublicEvent"
-  | "ForkEvent";
+  | "ForkEvent"
+  | "DiscussionEvent"
+  | "MemberEvent";
+
+export interface FlattenedEvent {
+  eventType: EventType; // The only strictly required field
+  
+  // Global
+  actionMade?: string;
+  actorUsername?: string;
+  booleanQuery?: any; // or record/object if you know the exact JSON shape
+  targetAuthorUsername?: string;
+  targetCommiterUsername?: string;
+
+  // Push / Commit
+  pusherType?: string;
+  minCommitCount?: number;
+  maxCommitCount?: number;
+  commitMsgSubstring?: string;
+  gitDiffPatchPrompt?: string;
+  gitDiffSize?: number;
+  fileChanged?: string;
+
+  // Branch / Tag
+  sourceBranch?: string;            
+  targetBranch?: string;       
+  refType?: string;              
+  branchCreated?: boolean;
+  branchDeleted?: boolean;
+
+  // Pull Request
+  pullRequestTitleContains?: string;
+  pullRequestBodyContains?: string;
+  pullRequestIsDraft?: boolean;
+  requestedReviewerUsername?: string;
+  reviewCommentBodyContains?: string;
+  reviewState?: string;
+  isMerged?: boolean;
+
+  // Issue
+  issueTitleContains?: string;
+  issueBodyContains?: string;
+  issueCommentBodyContains?: string;
+
+  // Shared Issue/PR
+  assigneeUsername?: string;
+  hasLabel?: string;
+  
+  // Commit Comment
+  commitCommentBodyContains?: string;
+
+  // Release
+  isPreRelease?: boolean;
+  releaseTagSubstring?: string;
+  releaseNameContains?: string;
+  releaseBodyContains?: string;
+
+  // Gollum/Wiki
+  wikiPageTitle?: string;
+  wikiPageName?: string;
+  wikiPageAction?: string;
+
+  // MemberEvent
+  addedMemberUsername?: string;
+
+  // ForkEvent
+  isFork?: boolean;
+  forkOwnerUsername?: string;
+
+  // DiscussionEvent
+  discussionTitleContains?: string;
+  discussionBodyContains?: string;
+  discussionCategory?: string;
+}

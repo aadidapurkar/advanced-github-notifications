@@ -1,5 +1,5 @@
 # Advanced Github Notifications
-### Get highly customised Github notifications with advanced Boolean Filtering.
+### Get highly customised Github notifications (browser, email, slack, discord) with advanced Boolean filtering.
 
 ### Prereqs
 - [Node.js v25.7.0](https://nodejs.org/en/download), [mySQL](https://dev.mysql.com/downloads/installer/)

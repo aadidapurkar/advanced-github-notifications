@@ -27,3 +27,11 @@ export const addSyntaxSql = (columns: string[]) : string => {
 export const getValueSyntax = <T>(values : T[]) : string => {
   return values.map(_ => "?").join(', ');
 }
+
+export function printNonNull<T extends object>(obj: T): void {
+  Object.entries(obj).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) {
+      console.log(`${key}:`, value);
+    }
+  });
+}

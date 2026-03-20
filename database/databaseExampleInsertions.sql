@@ -42,3 +42,5 @@ INSERT INTO NOTIFS_EVENTS_SUBSCRIPTIONS (notif) VALUES
 ("Hello"),
 ("Test"),
 ("Notif");
+
+-- INSERT INTO EVENTS_SUBSCRIPTIONS (subscriptionRef, eventType) VALUES (1, "PushEvent");
