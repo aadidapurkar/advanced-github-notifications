@@ -286,7 +286,7 @@ export const getAllNotifications = async () : Promise<Result<NotificationOfEvent
     return [null, rows as NotificationOfEvent[]]
 }
 
-export const getNotificationsOfSubscriber = async (id: number) : Promise<Result<Notification[]>> => {
+export const getNotificationsOfSubscriber = async (id: number) : Promise<Result<NotificationOfEvent[]>> => {
     const notifsPromise = pool.query<RowDataPacket[]>(`
         SELECT * FROM notifs_events_subscriptions where subscriberId = ?;`, [id])
     const [err, sub] = await handle(notifsPromise)
@@ -294,10 +294,10 @@ export const getNotificationsOfSubscriber = async (id: number) : Promise<Result<
         return [err ? err : new Error("DB Error"), null]
     }
     const [rows, fields] = sub
-    return [null, rows as Notification[]]
+    return [null, rows as NotificationOfEvent[]]
 }
 
-export const getNotificationsOfEvent = async (id: number) : Promise<Result<Notification[]>> => {
+export const getNotificationsOfEvent = async (id: number) : Promise<Result<NotificationOfEvent[]>> => {
     const notifsPromise = pool.query<RowDataPacket[]>(`
         SELECT * FROM notifs_events_subscriptions where eventId = ?;`, [id])
     const [err, sub] = await handle(notifsPromise)
@@ -305,11 +305,11 @@ export const getNotificationsOfEvent = async (id: number) : Promise<Result<Notif
         return [err ? err : new Error("DB Error"), null]
     }
     const [rows, fields] = sub
-    return [null, rows as Notification[]]
+    return [null, rows as NotificationOfEvent[]]
 }
 
 
-export const getNotificationsOfSubscription = async (id: number) : Promise<Result<Notification[]>> => {
+export const getNotificationsOfSubscription = async (id: number) : Promise<Result<NotificationOfEvent[]>> => {
     const notifsPromise = pool.query<RowDataPacket[]>(`
         SELECT * FROM notifs_events_subscriptions where subscriptionId = ?;`, [id])
     const [err, sub] = await handle(notifsPromise)
@@ -317,7 +317,7 @@ export const getNotificationsOfSubscription = async (id: number) : Promise<Resul
         return [err ? err : new Error("DB Error"), null]
     }
     const [rows, fields] = sub
-    return [null, rows as Notification[]]
+    return [null, rows as NotificationOfEvent[]]
 }
 export const createNotification = async (n : NotificationOfEventC) : Promise<Result<{success: boolean, insertId: number}>> => {
     const keys = Object.keys(n)
