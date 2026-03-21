@@ -393,33 +393,30 @@ export const extractDefaultData = (event: GithubRepoEvent): FlattenedEvent => {
 
 export const hydrateAndExtractPushEvent = async (
   event: GithubRepoEvent,
-): Promise<Result<FlattenedEvent>> => {
+): Promise<Result<FlattenedEvent[]>> => {
   const payload = event.payload as any;
   const repoFullName = event.repo.name;
   const [owner, repo] = repoFullName.split("/");
   const before = payload.before;
   const head = payload.head;
 
-  const data: FlattenedEvent = {
+  const baseData: Partial<FlattenedEvent> = {
     eventType: event.type as EventType,
     actorUsername: event.actor.login,
     eventTime: event.created_at ? new Date(event.created_at) : undefined,
     pusherType: payload.pusher_type || payload.pusher?.type,
-    minCommitCount: payload.commits?.length,
-    maxCommitCount: payload.commits?.length,
-    commitMsgSubstring: payload.commits?.map((c: any) => c.message).join("; "),
     isForcePush: payload.forced,
   };
 
   if (payload.ref) {
-    data.targetBranch = payload.ref
+    baseData.targetBranch = payload.ref
       .replace("refs/heads/", "")
       .replace("refs/tags/", "");
-    data.refType = payload.ref.startsWith("refs/tags/") ? "tag" : "branch";
+    baseData.refType = payload.ref.startsWith("refs/tags/") ? "tag" : "branch";
   }
 
   if (head === ZERO_SHA) {
-    return [null, data];
+    return [null, [{ ...baseData, eventType: "PushEvent" } as FlattenedEvent]];
   }
 
   try {
@@ -446,37 +443,33 @@ export const hydrateAndExtractPushEvent = async (
       if (resp.data.commits) commits = resp.data.commits;
     }
 
-    // Now process the files and commits identically
-    data.gitDiffSize = files.reduce(
-      (acc: number, f: any) => acc + (f.changes || 0),
-      0,
-    );
+    const flattenedCommits: FlattenedEvent[] = commits.map((commit: any) => {
+      const commitData: FlattenedEvent = {
+        ...(baseData as FlattenedEvent),
+        minCommitCount: 1,
+        maxCommitCount: 1,
+        commitMsgSubstring: commit.commit?.message || commit.message,
+        targetAuthorUsername: commit.author?.login || commit.commit?.author?.name,
+        targetCommiterUsername: commit.committer?.login || commit.commit?.committer?.name,
+      };
 
-    const combinedPatches = files
-      .map((f: any) => f.patch)
-      .filter(Boolean)
-      .join("\n");
-    data.gitDiffPatchPrompt = combinedPatches.substring(0, 3000);
+      if (commit.files) {
+          commitData.gitDiffSize = commit.files.reduce(
+            (acc: number, f: any) => acc + (f.changes || 0),
+            0,
+          );
+          commitData.fileChanged = commit.files.map((f: any) => f.filename).join(",");
+          const combinedPatches = commit.files
+            .map((f: any) => f.patch)
+            .filter(Boolean)
+            .join("\n");
+          commitData.gitDiffPatchPrompt = combinedPatches.substring(0, 3000);
+      }
 
-    data.fileChanged = files.map((f: any) => f.filename).join(",");
+      return commitData;
+    });
 
-    data.targetAuthorUsername = Array.from(
-      new Set(
-        commits
-          .map((c: any) => c.author?.login || c.commit?.author?.name)
-          .filter(Boolean),
-      ),
-    ).join(",");
-
-    data.targetCommiterUsername = Array.from(
-      new Set(
-        commits
-          .map((c: any) => c.committer?.login || c.commit?.committer?.name)
-          .filter(Boolean),
-      ),
-    ).join(",");
-
-    return [null, data];
+    return [null, flattenedCommits];
   } catch (error) {
     console.error("Hydration Error: ", error); // Good for debugging
     return [new Error("Error fetching commit comparison/details"), null];
@@ -486,34 +479,34 @@ export const hydrateAndExtractPushEvent = async (
 // 3. Master router function
 export const mapEventToSchema = async (
   event: GithubRepoEvent,
-): Promise<Result<FlattenedEvent>> => {
+): Promise<Result<FlattenedEvent[]>> => {
   switch (event.type) {
     case "PushEvent":
       return await hydrateAndExtractPushEvent(event);
     case "PullRequestEvent":
     case "PullRequestReviewEvent":
     case "PullRequestReviewCommentEvent":
-      return [null, extractPullRequestData(event)];
+      return [null, [extractPullRequestData(event)]];
     case "IssuesEvent":
     case "IssueCommentEvent":
-      return [null, extractIssueData(event)];
+      return [null, [extractIssueData(event)]];
     case "ReleaseEvent":
-      return [null, extractReleaseData(event)];
+      return [null, [extractReleaseData(event)]];
     case "DiscussionEvent":
-      return [null, extractDiscussionData(event)];
+      return [null, [extractDiscussionData(event)]];
     case "CommitCommentEvent":
-      return [null, extractCommitCommentData(event)];
+      return [null, [extractCommitCommentData(event)]];
     case "GollumEvent":
-      return [null, extractGollumData(event)];
+      return [null, [extractGollumData(event)]];
     case "MemberEvent":
-      return [null, extractMemberData(event)];
+      return [null, [extractMemberData(event)]];
     case "ForkEvent":
-      return [null, extractForkData(event)];
+      return [null, [extractForkData(event)]];
     case "CreateEvent":
-      return [null, extractCreateData(event)];
+      return [null, [extractCreateData(event)]];
     case "DeleteEvent":
-      return [null, extractDeleteData(event)];
+      return [null, [extractDeleteData(event)]];
     default:
-      return [null, extractDefaultData(event)];
+      return [null, [extractDefaultData(event)]];
   }
 };

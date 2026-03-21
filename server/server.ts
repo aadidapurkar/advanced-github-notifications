@@ -26,6 +26,7 @@ import { FlattenedEvent, GithubRepoEvent, MatchedEventTuple } from "../types";
 import { printNonNull } from "../util";
 import { promises as fs } from "fs";
 import { Engine } from "json-rules-engine";
+import jsonpath from "jsonpath";
 
 const app = express();
 app.use(json());
@@ -40,6 +41,33 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 app.listen(8080, () => console.log("Server running"));
+
+/**
+ * Recursively resolves fact references within rule conditions.
+ * Example: { fact: "subscriptionDB", path: "$.commitMsgSubstring" } -> "bug"
+ */
+const resolveFactValues = (conditions: any, facts: any): any => {
+  if (Array.isArray(conditions)) {
+    return conditions.map((c) => resolveFactValues(c, facts));
+  } else if (typeof conditions === "object" && conditions !== null) {
+    if (conditions.fact && conditions.path && Object.keys(conditions).length === 2) {
+      const factData = facts[conditions.fact];
+      if (factData) {
+        return jsonpath.value(factData, conditions.path);
+      }
+    }
+    const newObj: any = {};
+    for (const key in conditions) {
+      if (key === "value") {
+        newObj[key] = resolveFactValues(conditions[key], facts);
+      } else {
+        newObj[key] = conditions[key];
+      }
+    }
+    return newObj;
+  }
+  return conditions;
+};
 
 /**
  * Evaluates a set of flattened events against subscription rules using json-rules-engine.
@@ -75,44 +103,42 @@ const evaluateRules = async (
 
     for (const event of events) {
       for (const row of rows) {
-        // If there's no booleanQuery, we assume it's a match (as it passed the first layer of filtering)
-        if (!row.booleanQuery || Object.keys(row.booleanQuery).length === 0) {
+        // If there's no booleanQuery, we assume it's a match
+        if (!row.booleanQuery || (typeof row.booleanQuery === "object" && Object.keys(row.booleanQuery).length === 0)) {
           matches.push({ event, subscription: row });
           continue;
         }
 
         const engine = new Engine();
-        engine.addOperator('includesSubstring', (factValue, jsonValue) => {
-          if (typeof factValue !== 'string' || typeof jsonValue !== 'string') return false;
+        engine.addOperator("includesSubstring", (factValue, jsonValue) => {
+          if (typeof factValue !== "string" || typeof jsonValue !== "string") return false;
           return factValue.toLowerCase().includes(jsonValue.toLowerCase());
         });
-        // The rule from DB might be a single rule or an array/object compatible with json-rules-engine
+
         try {
-          // Wrap the database query with the required 'conditions' and 'event' properties
-          engine.addRule({
-            conditions:
-              typeof row.booleanQuery === "string"
-                ? JSON.parse(row.booleanQuery)
-                : row.booleanQuery,
-            event: {
-              type: "matchFound", // This can be any string, it just satisfies the engine's requirement
-            },
-          });
+          const rawConditions = typeof row.booleanQuery === "string"
+            ? JSON.parse(row.booleanQuery)
+            : row.booleanQuery;
 
           const facts = {
             githubEvent: event,
             subscriptionDB: row,
           };
 
+          // Resolve Fact-to-Fact references in the conditions
+          const resolvedConditions = resolveFactValues(rawConditions, facts);
+
+          engine.addRule({
+            conditions: resolvedConditions,
+            event: { type: "matchFound" },
+          });
+
           const { events: triggeredEvents } = await engine.run(facts);
           if (triggeredEvents.length > 0) {
             matches.push({ event, subscription: row });
           }
         } catch (ruleErr) {
-          console.error(
-            `Error evaluating rule for event ${eventType}:`,
-            ruleErr,
-          );
+          console.error(`Error evaluating rule for event ${eventType}:`, ruleErr);
         }
       }
     }
@@ -124,7 +150,6 @@ const evaluateRules = async (
 // poller fn
 const pollAllSubscriptions = async () => {
   console.log("Polling has begun...");
-  // 1. Get subscriptions and their recent events
   const [err, subsAndRecentEvents] = await getGithubEventsOfEachSubscription();
   if (err || !subsAndRecentEvents) {
     console.error("Error fetching subscriptions:", err);
@@ -137,68 +162,45 @@ const pollAllSubscriptions = async () => {
     matches: MatchedEventTuple[];
   }[] = [];
 
-  // 2. Iterate through subsAndRecentEvents
   for (const [sub, recentEvents] of subsAndRecentEvents) {
     const latestTime = sub.latestEventTime
       ? new Date(sub.latestEventTime)
       : new Date("1900-01-01");
 
-    // Update latestEventTime in database to the most recent event we just fetched
     if (recentEvents.length > 0) {
       const newestEventInBatch = new Date(
-        Math.max(
-          ...recentEvents.map((e) =>
-            new Date(e.created_at || "1900-01-01").getTime(),
-          ),
-        ),
+        Math.max(...recentEvents.map((e) => new Date(e.created_at || "1900-01-01").getTime()))
       );
       if (newestEventInBatch > latestTime) {
-        await updateSubscription({
-          ...sub,
-          latestEventTime: newestEventInBatch,
-        });
+        await updateSubscription({ ...sub, latestEventTime: newestEventInBatch });
       }
     }
 
     const unparsedEvents = getUnparsedEvents(recentEvents, latestTime);
 
-    // 5. Filter for events the user actually wants notifications for (First layer filtering by eventType)
-    const [filterErr, desiredEvents] =
-      await filterGithubEventsArrayForDesiredEventsOfSubscription(
-        unparsedEvents,
-        sub,
-      );
+    const [filterErr, desiredEvents] = await filterGithubEventsArrayForDesiredEventsOfSubscription(unparsedEvents, sub);
     if (filterErr || !desiredEvents || desiredEvents.length === 0) continue;
 
-    // 6. Hydrate and extract the desired events using mapEventToSchema
     const hydratedEventsPromises = desiredEvents.map(async (event) => {
-      const [mapErr, flattened] = await mapEventToSchema(event);
+      const [mapErr, flattenedArray] = await mapEventToSchema(event);
       if (mapErr) {
         console.error("Hydration error:", mapErr);
         return null;
       }
-      return flattened;
+      return flattenedArray;
     });
 
-    const flattenedEvents = (await Promise.all(hydratedEventsPromises)).filter(
-      Boolean,
-    ) as FlattenedEvent[];
+    const flattenedEventsResults = (await Promise.all(hydratedEventsPromises)).filter(Boolean) as FlattenedEvent[][];
+    const flattenedEvents = flattenedEventsResults.flat();
     if (flattenedEvents.length === 0) continue;
 
-    // 7. Dynamic Filtering via json-rules-engine
     const [dbErr, subscriptionRows] = await getEventsForSubscriptionId(sub.id);
     if (dbErr || !subscriptionRows) {
-      console.error(
-        `Error fetching event rows for subscription ${sub.id}:`,
-        dbErr,
-      );
+      console.error(`Error fetching event rows for subscription ${sub.id}:`, dbErr);
       continue;
     }
 
-    const matchedTuples = await evaluateRules(
-      flattenedEvents,
-      subscriptionRows,
-    );
+    const matchedTuples = await evaluateRules(flattenedEvents, subscriptionRows);
 
     if (matchedTuples.length > 0) {
       allMatchedEvents.push({
@@ -211,15 +213,8 @@ const pollAllSubscriptions = async () => {
 
   if (allMatchedEvents.length > 0) {
     try {
-      // Write to pollingOutput.json in the current directory
-      await fs.writeFile(
-        "pollingOutput.json",
-        JSON.stringify(allMatchedEvents, null, 2),
-      );
-
-      console.log(
-        `Successfully wrote ${allMatchedEvents.length} subscriptions with matches to pollingOutput.json`,
-      );
+      await fs.writeFile("pollingOutput.json", JSON.stringify(allMatchedEvents, null, 2));
+      console.log(`Successfully wrote ${allMatchedEvents.length} subscriptions with matches to pollingOutput.json`);
     } catch (writeErr) {
       console.error("Error writing to pollingOutput.json:", writeErr);
     }
