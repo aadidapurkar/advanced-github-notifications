@@ -10,8 +10,17 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import { eventsSubscriptionRouter } from "./routes/events-subscriptions";
 import { notifRouter } from "./routes/notifications";
-import { getEventsForSubscriptionId, getSubscriptions, updateSubscription } from "../database/safeQueries";
-import { filterGithubEventsArrayForDesiredEventsOfSubscription, getGithubEventsOfEachSubscription, getUnparsedEvents, mapEventToSchema } from "../github-rest-api/atomicPollingFunctions";
+import {
+  getEventsForSubscriptionId,
+  getSubscriptions,
+  updateSubscription,
+} from "../database/safeQueries";
+import {
+  filterGithubEventsArrayForDesiredEventsOfSubscription,
+  getGithubEventsOfEachSubscription,
+  getUnparsedEvents,
+  mapEventToSchema,
+} from "../github-rest-api/atomicPollingFunctions";
 import { Subscription, EventSubscription } from "./zod-schemas";
 import { FlattenedEvent, GithubRepoEvent, MatchedEventTuple } from "../types";
 import { printNonNull } from "../util";
@@ -37,7 +46,7 @@ app.listen(8080, () => console.log("Server running"));
  */
 const evaluateRules = async (
   flattenedEvents: FlattenedEvent[],
-  subscriptionRows: EventSubscription[]
+  subscriptionRows: EventSubscription[],
 ): Promise<MatchedEventTuple[]> => {
   const matches: MatchedEventTuple[] = [];
 
@@ -73,10 +82,22 @@ const evaluateRules = async (
         }
 
         const engine = new Engine();
-        
+        engine.addOperator('includesSubstring', (factValue, jsonValue) => {
+          if (typeof factValue !== 'string' || typeof jsonValue !== 'string') return false;
+          return factValue.toLowerCase().includes(jsonValue.toLowerCase());
+        });
         // The rule from DB might be a single rule or an array/object compatible with json-rules-engine
         try {
-          engine.addRule(row.booleanQuery);
+          // Wrap the database query with the required 'conditions' and 'event' properties
+          engine.addRule({
+            conditions:
+              typeof row.booleanQuery === "string"
+                ? JSON.parse(row.booleanQuery)
+                : row.booleanQuery,
+            event: {
+              type: "matchFound", // This can be any string, it just satisfies the engine's requirement
+            },
+          });
 
           const facts = {
             githubEvent: event,
@@ -88,7 +109,10 @@ const evaluateRules = async (
             matches.push({ event, subscription: row });
           }
         } catch (ruleErr) {
-          console.error(`Error evaluating rule for event ${eventType}:`, ruleErr);
+          console.error(
+            `Error evaluating rule for event ${eventType}:`,
+            ruleErr,
+          );
         }
       }
     }
@@ -107,26 +131,43 @@ const pollAllSubscriptions = async () => {
     return;
   }
 
-  const allMatchedEvents: { subscriptionId: number; repository: string; matches: MatchedEventTuple[] }[] = [];
+  const allMatchedEvents: {
+    subscriptionId: number;
+    repository: string;
+    matches: MatchedEventTuple[];
+  }[] = [];
 
   // 2. Iterate through subsAndRecentEvents
   for (const [sub, recentEvents] of subsAndRecentEvents) {
-    const latestTime = sub.latestEventTime ? new Date(sub.latestEventTime) : new Date("1900-01-01");
+    const latestTime = sub.latestEventTime
+      ? new Date(sub.latestEventTime)
+      : new Date("1900-01-01");
 
     // Update latestEventTime in database to the most recent event we just fetched
     if (recentEvents.length > 0) {
       const newestEventInBatch = new Date(
-        Math.max(...recentEvents.map((e) => new Date(e.created_at || "1900-01-01").getTime()))
+        Math.max(
+          ...recentEvents.map((e) =>
+            new Date(e.created_at || "1900-01-01").getTime(),
+          ),
+        ),
       );
       if (newestEventInBatch > latestTime) {
-        await updateSubscription({ ...sub, latestEventTime: newestEventInBatch });
+        await updateSubscription({
+          ...sub,
+          latestEventTime: newestEventInBatch,
+        });
       }
     }
 
     const unparsedEvents = getUnparsedEvents(recentEvents, latestTime);
 
     // 5. Filter for events the user actually wants notifications for (First layer filtering by eventType)
-    const [filterErr, desiredEvents] = await filterGithubEventsArrayForDesiredEventsOfSubscription(unparsedEvents, sub);
+    const [filterErr, desiredEvents] =
+      await filterGithubEventsArrayForDesiredEventsOfSubscription(
+        unparsedEvents,
+        sub,
+      );
     if (filterErr || !desiredEvents || desiredEvents.length === 0) continue;
 
     // 6. Hydrate and extract the desired events using mapEventToSchema
@@ -139,18 +180,26 @@ const pollAllSubscriptions = async () => {
       return flattened;
     });
 
-    const flattenedEvents = (await Promise.all(hydratedEventsPromises)).filter(Boolean) as FlattenedEvent[];
+    const flattenedEvents = (await Promise.all(hydratedEventsPromises)).filter(
+      Boolean,
+    ) as FlattenedEvent[];
     if (flattenedEvents.length === 0) continue;
 
     // 7. Dynamic Filtering via json-rules-engine
     const [dbErr, subscriptionRows] = await getEventsForSubscriptionId(sub.id);
     if (dbErr || !subscriptionRows) {
-      console.error(`Error fetching event rows for subscription ${sub.id}:`, dbErr);
+      console.error(
+        `Error fetching event rows for subscription ${sub.id}:`,
+        dbErr,
+      );
       continue;
     }
 
-    const matchedTuples = await evaluateRules(flattenedEvents, subscriptionRows);
-    
+    const matchedTuples = await evaluateRules(
+      flattenedEvents,
+      subscriptionRows,
+    );
+
     if (matchedTuples.length > 0) {
       allMatchedEvents.push({
         subscriptionId: sub.id,
@@ -163,9 +212,14 @@ const pollAllSubscriptions = async () => {
   if (allMatchedEvents.length > 0) {
     try {
       // Write to pollingOutput.json in the current directory
-      await fs.writeFile("pollingOutput.json", JSON.stringify(allMatchedEvents, null, 2));
+      await fs.writeFile(
+        "pollingOutput.json",
+        JSON.stringify(allMatchedEvents, null, 2),
+      );
 
-      console.log(`Successfully wrote ${allMatchedEvents.length} subscriptions with matches to pollingOutput.json`);
+      console.log(
+        `Successfully wrote ${allMatchedEvents.length} subscriptions with matches to pollingOutput.json`,
+      );
     } catch (writeErr) {
       console.error("Error writing to pollingOutput.json:", writeErr);
     }
