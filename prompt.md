@@ -1,22 +1,16 @@
-I am building a backend system that polls the GitHub REST API for repository events. I need to map the deeply nested JSON payloads from GitHub's `/events` endpoint into flat TypeScript objects that match the columns in the `events_subscriptions` table of my attached `schema.sql`.
+I have recently updated the `events_subscriptions` table in `database/schema.sql` by adding new useful fields from the GitHub event payloads and removing some redundant ones. 
 
-Please update the attached `atomicPollingFunctions.ts` file by completing the following tasks:
+Please refactor the codebase to align with this new schema. Specifically, update the following files:
 
-1. Create separate synchronous extraction functions for different event categories. Use the official GitHub documentation as the source of truth for payload structures: https://docs.github.com/en/rest/using-the-rest-api/github-event-types?apiVersion=2022-11-28 
+1. `types.ts`:
+- Update the `FlattenedEvent` type (and any other related database row types) to perfectly mirror the updated `events_subscriptions` schema.
+- Add the new fields (e.g., `repositoryName`, `isForcePush`, `minAdditions`, etc.) with their correct TypeScript types.
+- Remove any fields that were deleted from the SQL schema (like `isFork`, `branchCreated`, etc., depending on what was removed).
 
-Please implement these specific extractors:
-- `extractPullRequestData(event)`: Maps PullRequestEvent, PullRequestReviewEvent, and PullRequestReviewCommentEvent to the PR-specific and Shared fields in the schema.
-- `extractIssueData(event)`: Maps IssuesEvent and IssueCommentEvent to the Issue-specific and Shared fields in the schema.
-- `extractReleaseData(event)`: Maps ReleaseEvent to the Release fields.
-- `extractDiscussionData(event)`: Maps DiscussionEvent to the Discussion fields.
+2. `github-rest-api/atomicPollingFunctions.ts`:
+- Update the mapping and flattening logic to correctly populate the new `FlattenedEvent` fields using the raw GitHub API payload.
+- For example, ensure you map `repository.name` to `repositoryName`, `payload.forced` to `isForcePush`, `payload.pull_request.additions` to `minAdditions`, etc.
+- Remove any logic that was populating the now-deleted fields.
+- Fix any TypeScript errors resulting from these changes to ensure the event filtering logic still compiles and works correctly.
 
-2. Refactor the existing `getDetailedCommitInfo` into `hydrateAndExtractPushEvent(event: GithubRepoEvent)`. It should call the `compareCommitsWithBasehead` API and return a flat object matching the Push/Commit columns in `schema.sql`. Please truncate the `gitDiffPatchPrompt` string to 3000 characters to manage memory.
-
-3. Create a master router function `async mapEventToSchema(event: GithubRepoEvent)` that uses a switch statement on `event.type` to call the correct function and return the flattened object.
-
-Strict Requirements:
-- Use TypeScript and follow the types in `types.ts`.
-- Ensure shared fields (assigneeUsername, hasLabel) are correctly mapped for both Issues and PRs.
-- Do not include any keys in the output objects that are not present as columns in `events_subscriptions`.
-- Preserve existing Octokit and caching logic in `atomicPollingFunctions.ts`.
-
+Please output the complete, updated code for both `types.ts` and `github-rest-api/atomicPollingFunctions.ts`.

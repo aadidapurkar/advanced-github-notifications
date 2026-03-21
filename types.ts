@@ -42,6 +42,8 @@ export interface FlattenedEvent {
   booleanQuery?: any; // or record/object if you know the exact JSON shape
   targetAuthorUsername?: string;
   targetCommiterUsername?: string;
+  authorAssociation?: string;
+  eventTime?: Date;
 
   // Push / Commit
   pusherType?: string;
@@ -51,13 +53,12 @@ export interface FlattenedEvent {
   gitDiffPatchPrompt?: string;
   gitDiffSize?: number;
   fileChanged?: string;
+  isForcePush?: boolean;
 
   // Branch / Tag
   sourceBranch?: string;            
   targetBranch?: string;       
   refType?: string;              
-  branchCreated?: boolean;
-  branchDeleted?: boolean;
 
   // Pull Request
   pullRequestTitleContains?: string;
@@ -67,6 +68,9 @@ export interface FlattenedEvent {
   reviewCommentBodyContains?: string;
   reviewState?: string;
   isMerged?: boolean;
+  pullRequestAdditions?: number;
+  pullRequestDeletions?: number;
+  requestedTeamName?: string;
 
   // Issue
   issueTitleContains?: string;
@@ -76,6 +80,8 @@ export interface FlattenedEvent {
   // Shared Issue/PR
   assigneeUsername?: string;
   hasLabel?: string;
+  milestoneTitle?: string;
+  stateIssuePR?: string;
   
   // Commit Comment
   commitCommentBodyContains?: string;
@@ -88,14 +94,12 @@ export interface FlattenedEvent {
 
   // Gollum/Wiki
   wikiPageTitle?: string;
-  wikiPageName?: string;
   wikiPageAction?: string;
 
   // MemberEvent
   addedMemberUsername?: string;
 
   // ForkEvent
-  isFork?: boolean;
   forkOwnerUsername?: string;
 
   // DiscussionEvent

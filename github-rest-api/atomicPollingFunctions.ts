@@ -180,6 +180,7 @@ export const extractPullRequestData = (
     eventType: event.type as EventType,
     actionMade: payload.action,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
   };
 
   if (pr) {
@@ -190,11 +191,27 @@ export const extractPullRequestData = (
     data.pullRequestIsDraft = pr.draft;
     data.isMerged = pr.merged;
     data.targetAuthorUsername = pr.user?.login;
+    data.pullRequestAdditions = pr.additions;
+    data.pullRequestDeletions = pr.deletions;
+    data.authorAssociation = pr.author_association;
+    data.stateIssuePR = pr.state;
+
+    if (pr.milestone) {
+      data.milestoneTitle = pr.milestone.title;
+    }
+
     if (pr.requested_reviewers) {
       data.requestedReviewerUsername = pr.requested_reviewers
         .map((r: any) => r.login)
         .join(",");
     }
+
+    if (pr.requested_teams) {
+      data.requestedTeamName = pr.requested_teams
+        .map((t: any) => t.name)
+        .join(",");
+    }
+
     if (pr.assignee) {
       data.assigneeUsername = pr.assignee.login;
     } else if (pr.assignees && pr.assignees.length > 0) {
@@ -207,15 +224,16 @@ export const extractPullRequestData = (
 
   if (comment) {
     data.reviewCommentBodyContains = comment.body;
+    data.authorAssociation = comment.author_association;
   }
 
   if (review) {
     data.reviewState = review.state;
+    data.authorAssociation = review.author_association;
   }
 
   return data;
 };
-
 
 // Raw Github Event JSON from Github REST API --> Flattened JSON object matching events_subscriptions in schema.sql
 export const extractIssueData = (event: GithubRepoEvent): FlattenedEvent => {
@@ -227,12 +245,20 @@ export const extractIssueData = (event: GithubRepoEvent): FlattenedEvent => {
     eventType: event.type as EventType,
     actionMade: payload.action,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
   };
 
   if (issue) {
     data.issueTitleContains = issue.title;
     data.issueBodyContains = issue.body?.substring(0, 3000) ?? null;
     data.targetAuthorUsername = issue.user?.login;
+    data.authorAssociation = issue.author_association;
+    data.stateIssuePR = issue.state;
+
+    if (issue.milestone) {
+      data.milestoneTitle = issue.milestone.title;
+    }
+
     if (issue.assignee) {
       data.assigneeUsername = issue.assignee.login;
     } else if (issue.assignees && issue.assignees.length > 0) {
@@ -247,6 +273,7 @@ export const extractIssueData = (event: GithubRepoEvent): FlattenedEvent => {
 
   if (comment) {
     data.issueCommentBodyContains = comment.body;
+    data.authorAssociation = comment.author_association;
   }
 
   return data;
@@ -260,6 +287,7 @@ export const extractReleaseData = (event: GithubRepoEvent): FlattenedEvent => {
     eventType: event.type as EventType,
     actionMade: payload.action,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     isPreRelease: release?.prerelease,
     releaseTagSubstring: release?.tag_name,
     releaseNameContains: release?.name,
@@ -277,6 +305,7 @@ export const extractDiscussionData = (
     eventType: event.type as EventType,
     actionMade: payload.action,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     discussionTitleContains: discussion?.title,
     discussionBodyContains: discussion?.body,
     discussionCategory: discussion?.category?.name,
@@ -290,8 +319,10 @@ export const extractCommitCommentData = (
   return {
     eventType: event.type as EventType,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     commitCommentBodyContains: payload.comment?.body,
     targetAuthorUsername: payload.comment?.user?.login,
+    authorAssociation: payload.comment?.author_association,
   };
 };
 
@@ -301,8 +332,8 @@ export const extractGollumData = (event: GithubRepoEvent): FlattenedEvent => {
   return {
     eventType: event.type as EventType,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     wikiPageTitle: page?.title,
-    wikiPageName: page?.page_name,
     wikiPageAction: page?.action,
   };
 };
@@ -313,6 +344,7 @@ export const extractMemberData = (event: GithubRepoEvent): FlattenedEvent => {
     eventType: event.type as EventType,
     actionMade: payload.action,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     addedMemberUsername: payload.member?.login,
   };
 };
@@ -322,7 +354,7 @@ export const extractForkData = (event: GithubRepoEvent): FlattenedEvent => {
   return {
     eventType: event.type as EventType,
     actorUsername: event.actor.login,
-    isFork: true,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     forkOwnerUsername: payload.forkee?.owner?.login,
   };
 };
@@ -332,9 +364,9 @@ export const extractCreateData = (event: GithubRepoEvent): FlattenedEvent => {
   return {
     eventType: event.type as EventType,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     refType: payload.ref_type,
     targetBranch: payload.ref,
-    branchCreated: payload.ref_type === "branch",
   };
 };
 
@@ -343,9 +375,9 @@ export const extractDeleteData = (event: GithubRepoEvent): FlattenedEvent => {
   return {
     eventType: event.type as EventType,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     refType: payload.ref_type,
     targetBranch: payload.ref,
-    branchDeleted: payload.ref_type === "branch",
   };
 };
 
@@ -355,6 +387,7 @@ export const extractDefaultData = (event: GithubRepoEvent): FlattenedEvent => {
     eventType: event.type as EventType,
     actionMade: payload.action,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
   };
 };
 
@@ -370,10 +403,12 @@ export const hydrateAndExtractPushEvent = async (
   const data: FlattenedEvent = {
     eventType: event.type as EventType,
     actorUsername: event.actor.login,
+    eventTime: event.created_at ? new Date(event.created_at) : undefined,
     pusherType: payload.pusher_type || payload.pusher?.type,
     minCommitCount: payload.commits?.length,
     maxCommitCount: payload.commits?.length,
     commitMsgSubstring: payload.commits?.map((c: any) => c.message).join("; "),
+    isForcePush: payload.forced,
   };
 
   if (payload.ref) {
@@ -384,7 +419,6 @@ export const hydrateAndExtractPushEvent = async (
   }
 
   if (head === ZERO_SHA) {
-    data.branchDeleted = true;
     return [null, data];
   }
 
@@ -393,7 +427,6 @@ export const hydrateAndExtractPushEvent = async (
     let commits: any[] = [];
 
     if (before === ZERO_SHA) {
-      data.branchCreated = true;
       // Just get the single head commit instead of comparing
       const resp = await octokit.rest.repos.getCommit({
         owner,

@@ -35,7 +35,8 @@ CREATE TABLE events_subscriptions (
     booleanQuery JSON,
     targetAuthorUsername TEXT,
     targetCommiterUsername TEXT,
-
+    authorAssociation TEXT, -- sent in issues,PR's, comments (OWNER, COLLABORATOR, CONTRIBUTOR, FIRST_TIME_CONTRIBUTOR)
+    eventTime DATETIME DEFAULT '2099-01-01 00:00:00',
     -- Push / Commit Filters
     pusherType VARCHAR(20),
     minCommitCount INTEGER,
@@ -44,14 +45,13 @@ CREATE TABLE events_subscriptions (
     gitDiffPatchPrompt TEXT,
     gitDiffSize INTEGER,
     fileChanged TEXT,
+    isForcePush BOOLEAN,
 
 
     -- Branch / Tag Filters
     sourceBranch TEXT,            
     targetBranch VARCHAR(255),       
-    refType VARCHAR(20),              
-    branchCreated BOOLEAN,
-    branchDeleted BOOLEAN,
+    refType VARCHAR(20),
 
     -- Pull Request Filters
     pullRequestTitleContains TEXT,
@@ -61,16 +61,21 @@ CREATE TABLE events_subscriptions (
     reviewCommentBodyContains TEXT,
     reviewState VARCHAR(30),
     isMerged BOOLEAN,
+    pullRequestAdditions INTEGER,
+    pullRequestDeletions INTEGER,
+    requestedTeamName TEXT,
 
     -- Issue Filters
     issueTitleContains TEXT,
     issueBodyContains TEXT,
     issueCommentBodyContains TEXT,
+   
 
     -- Shared Issue & PR Filters
     assigneeUsername TEXT,
     hasLabel VARCHAR(255),
-
+    milestoneTitle TEXT,
+    stateIssuePR TEXT -- open/closed
     -- Commit Comment Filters
     commitCommentBodyContains TEXT,
     
@@ -82,14 +87,12 @@ CREATE TABLE events_subscriptions (
 
     -- Gollum/Wiki
     wikiPageTitle TEXT,
-    wikiPageName TEXT,
     wikiPageAction VARCHAR(20),
 
     -- MemberEvent
     addedMemberUsername TEXT,
 
     -- ForkEvent
-    isFork BOOLEAN,
     forkOwnerUsername TEXT,
 
     -- DiscussionEvent
