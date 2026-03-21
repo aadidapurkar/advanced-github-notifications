@@ -1,6 +1,4 @@
 import z from 'zod';
-import { RuleProperties } from 'json-rules-engine';
-// Suffixes of ReqSchema are used to parse and validate requests on server
 
 // Subscriptions CRUD Req Body for Server
 export const getParticularSubscriptionReqSchema = z.object({
@@ -16,7 +14,7 @@ export const addSubscriptionReqSchema = z.object({
 
 
 export const deleteSubscriptionReqSchema = z.object({
-    id: z.int()
+    id: z.number().int()
 }).strict();
 
 export const updateSubscriptionReqSchema = z.object({
@@ -32,7 +30,7 @@ export const updateSubscriptionSchema = z.object({
     username: z.string().nullable().optional(),
     repo: z.string().nullable().optional(),
     latestCommitSha: z.string().nullable().optional(),
-    latestEventTime: z.date().nullable().optional(),
+    latestEventTime: z.coerce.date().nullable().optional(),
 }).strict();
 
 
@@ -75,32 +73,87 @@ export const getEventForASubscriptionReqSchema = z.object({
 }).strict();
 
 export const addEventForASubscriptionReqSchema = z.object({
-    subscriptionRef: z.number(), // subscription id not event id
+    subscriptionRef: z.number(),
     eventType: z.string(),
+
+    // Global Filters
+    actionMade: z.string().nullable().optional(),
+    actorUsername: z.string().nullable().optional(),
+    booleanQuery: z.any().nullable().optional(),
+    targetAuthorUsername: z.string().nullable().optional(),
+    targetCommiterUsername: z.string().nullable().optional(),
+    authorAssociation: z.string().nullable().optional(),
+    eventTime: z.coerce.date().nullable().optional(),
+
+    // Push / Commit Filters
+    pusherType: z.string().nullable().optional(),
+    minCommitCount: z.number().nullable().optional(),
+    maxCommitCount: z.number().nullable().optional(),
     commitMsgSubstring: z.string().nullable().optional(),
-    issueCommentContains: z.string().nullable().optional(),
     gitDiffPatchPrompt: z.string().nullable().optional(),
     gitDiffSize: z.number().nullable().optional(),
-    particularBranch: z.string().nullable().optional(),
     fileChanged: z.string().nullable().optional(),
-    booleanQuery: z.json().nullable().optional() // note - doesnt consider types of json-rules-engine
+    isForcePush: z.boolean().nullable().optional(),
+
+    // Branch / Tag Filters
+    sourceBranch: z.string().nullable().optional(),            
+    targetBranch: z.string().nullable().optional(),       
+    refType: z.string().nullable().optional(),
+
+    // Pull Request Filters
+    pullRequestTitleContains: z.string().nullable().optional(),
+    pullRequestBodyContains: z.string().nullable().optional(),
+    pullRequestIsDraft: z.boolean().nullable().optional(),
+    requestedReviewerUsername: z.string().nullable().optional(),
+    reviewCommentBodyContains: z.string().nullable().optional(),
+    reviewState: z.string().nullable().optional(),
+    isMerged: z.boolean().nullable().optional(),
+    pullRequestAdditions: z.number().nullable().optional(),
+    pullRequestDeletions: z.number().nullable().optional(),
+    requestedTeamName: z.string().nullable().optional(),
+
+    // Issue Filters
+    issueTitleContains: z.string().nullable().optional(),
+    issueBodyContains: z.string().nullable().optional(),
+    issueCommentBodyContains: z.string().nullable().optional(),
+
+    // Shared Issue & PR Filters
+    assigneeUsername: z.string().nullable().optional(),
+    hasLabel: z.string().nullable().optional(),
+    milestoneTitle: z.string().nullable().optional(),
+    stateIssuePR: z.string().nullable().optional(),
+
+    // Commit Comment Filters
+    commitCommentBodyContains: z.string().nullable().optional(),
+    
+    // Release
+    isPreRelease: z.boolean().nullable().optional(),
+    releaseTagSubstring: z.string().nullable().optional(),
+    releaseNameContains: z.string().nullable().optional(),
+    releaseBodyContains: z.string().nullable().optional(),
+
+    // Gollum/Wiki
+    wikiPageTitle: z.string().nullable().optional(),
+    wikiPageAction: z.string().nullable().optional(),
+
+    // MemberEvent
+    addedMemberUsername: z.string().nullable().optional(),
+
+    // ForkEvent
+    forkOwnerUsername: z.string().nullable().optional(),
+
+    // DiscussionEvent
+    discussionTitleContains: z.string().nullable().optional(),
+    discussionBodyContains: z.string().nullable().optional(),
+    discussionCategory: z.string().nullable().optional(),
 }).strict();
 
 export const deleteEventForASubscriptionReqSchema = z.object({
     id: z.number()
 }).strict();
 
-export const updateEventForASubscriptionReqSchema = z.object({
-    id: z.number(), // event id
-    subscriptionRef: z.number().optional(), // subscription id not event id
-    eventType: z.string().optional(),
-    commitMsgSubstring: z.string().nullable().optional(),
-    issueCommentContains: z.string().nullable().optional(),
-    gitDiffPatchPrompt: z.string().nullable().optional(),
-    gitDiffSize: z.number().nullable().optional(),
-    particularBranch: z.string().nullable().optional(),
-    fileChanged: z.string().nullable().optional(),
-    booleanQuery: z.json().nullable().optional() // note - doesnt consider types of json-rules-engine
+export const updateEventForASubscriptionReqSchema = addEventForASubscriptionReqSchema.extend({
+    id: z.number()
 }).strict();
 
 

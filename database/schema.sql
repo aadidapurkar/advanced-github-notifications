@@ -26,13 +26,13 @@ CREATE TABLE subscriptions (
 
 CREATE TABLE events_subscriptions (
     id integer PRIMARY KEY AUTO_INCREMENT,
-    subscriptionRef integer, -- id of subsription
-    eventType VARCHAR(39) NOT NULL,
+    subscriptionRef integer, -- id foreign key subscriptions
+    eventType VARCHAR(39) NOT NULL, -- desired event type
 
     -- Global Filters
-    actionMade TEXT,
-    actorUsername TEXT, -- ignore
-    booleanQuery JSON,
+    actionMade TEXT, -- desired action type
+    actorUsername TEXT, -- desired actor username
+    booleanQuery JSON, -- master boolean query which synthesises 0 or more of the fields events_subscriptions with boolean conditions
     targetAuthorUsername TEXT,
     targetCommiterUsername TEXT,
     authorAssociation TEXT, -- sent in issues,PR's, comments (OWNER, COLLABORATOR, CONTRIBUTOR, FIRST_TIME_CONTRIBUTOR)

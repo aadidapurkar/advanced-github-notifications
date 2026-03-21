@@ -1,5 +1,6 @@
 import { RestEndpointMethodTypes } from "@octokit/rest";
 import { RowDataPacket } from "mysql2";
+import { EventSubscription } from "./server/zod-schemas";
 
 export type ListRepoEventsResponse =
   RestEndpointMethodTypes["activity"]["listRepoEvents"]["response"];
@@ -106,4 +107,9 @@ export interface FlattenedEvent {
   discussionTitleContains?: string;
   discussionBodyContains?: string;
   discussionCategory?: string;
+}
+
+export interface MatchedEventTuple {
+  event: FlattenedEvent;
+  subscription: EventSubscription;
 }
